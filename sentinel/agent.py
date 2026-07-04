@@ -83,7 +83,7 @@ def _agent_loop():
         event_type=EventType.AGENT_PLAN,
         payload={
             "steps": [s.strip() for s in plan.split("\n") if s.strip()],
-            "model": CONFIG["vultron_prime"],
+            "model": CONFIG["reasoning_prime"],
         },
     ))
     time.sleep(1.0)
@@ -104,7 +104,7 @@ def _agent_loop():
             "documents_retrieved": [
                 c.description or f"chunk_{i}" for i, c in enumerate(chunks_1)
             ],
-            "reasoning_model": CONFIG["vultron_prime"],
+            "reasoning_model": CONFIG["reasoning_prime"],
             "result_summary": r1[:200],
         },
     ))
@@ -124,7 +124,7 @@ def _agent_loop():
             "documents_retrieved": [
                 c.description or f"chunk_{i}" for i, c in enumerate(chunks_2)
             ],
-            "reasoning_model": CONFIG["vultron_prime"],
+            "reasoning_model": CONFIG["reasoning_prime"],
             "result_summary": r2[:200],
         },
     ))
@@ -172,7 +172,7 @@ def _agent_loop():
                     c.description or f"chunk_{i}"
                     for i, c in enumerate(chunks_3)
                 ],
-                "reasoning_model": CONFIG["vultron_prime"],
+                "reasoning_model": CONFIG["reasoning_prime"],
                 "result_summary": r3[:200],
             },
         ))

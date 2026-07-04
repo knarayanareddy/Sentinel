@@ -22,7 +22,7 @@ def score_drift(action_description: str) -> tuple[bool, float, str]:
     Returns (is_drifted, drift_score, model_used).
     Fails closed: any error → (True, 1.0, model_name).
     """
-    model_name = CONFIG["vultron_core"]
+    model_name = CONFIG["reasoning_core"]
     if not _task_brief:
         return False, 0.0, model_name
 

@@ -34,7 +34,7 @@ def run_probe(action, drift_score: float, drifted: bool) -> dict:
 
     Fail-closed: any error → verdict=NO, confidence=0.
     """
-    model_name = CONFIG["vultron_prime"]
+    model_name = CONFIG["reasoning_prime"]
     _FALLBACK = {
         "verdict": "NO",
         "confidence": 0,
