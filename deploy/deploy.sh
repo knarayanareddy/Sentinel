@@ -73,8 +73,10 @@ fi
 
 # Step 6: Install Python dependencies
 log_info "Step 6/8: Installing Python dependencies..."
-python3 -m pip install --upgrade pip
-python3 -m pip install -r requirements.txt
+python3.11 -m venv /opt/sentinel/venv
+source /opt/sentinel/venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
 
 # Step 7: Build frontend
 log_info "Step 7/8: Building frontend..."
