@@ -5,7 +5,7 @@ import { SignalPage } from "./pages/SignalPage";
 import { GatePage } from "./pages/GatePage";
 import "./tokens.css";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL ?? ""; // Empty string allows relative paths via nginx proxy
 
 function AppContent() {
   const navigate = useNavigate();

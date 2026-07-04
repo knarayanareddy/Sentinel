@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { SentinelEvent } from "../types";
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
+const defaultWs = typeof window !== 'undefined' 
+  ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
+  : "ws://localhost:8000/ws";
+const WS_URL = import.meta.env.VITE_WS_URL ?? defaultWs;
 const RECONNECT_DELAY = 2000;
 
 export function useEventStream() {
