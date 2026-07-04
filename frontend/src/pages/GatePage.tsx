@@ -2,6 +2,10 @@ import { type CSSProperties } from "react";
 import type {
   SentinelEvent,
   IncidentSealedPayload,
+  ActionFrozenPayload,
+  ActionProposedPayload,
+  OperatorDecisionPayload,
+  Citation,
 } from "../types";
 import { OperatorGate } from "../components/OperatorGate";
 import { IncidentRecord } from "../components/IncidentRecord";
@@ -10,40 +14,22 @@ interface GatePageProps {
   events: SentinelEvent[];
   frozenAction: SentinelEvent | null;
   onDecision: (approved: boolean) => void;
-  onBack: () => void;
 }
 
-export function GatePage({ events, frozenAction, onDecision, onBack }: GatePageProps) {
+export function GatePage({ events, frozenAction, onDecision }: GatePageProps) {
   const containerStyle: CSSProperties = {
     display: "flex",
     flexDirection: "column",
     gap: "24px",
     padding: "24px",
-    height: "100vh",
+    height: "100%",
     overflow: "auto",
-  };
-
-  const headerStyle: CSSProperties = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
   };
 
   const titleStyle: CSSProperties = {
     fontSize: "20px",
     fontWeight: "600",
     color: "var(--color-text)",
-  };
-
-  const backButtonStyle: CSSProperties = {
-    padding: "8px 16px",
-    fontSize: "14px",
-    fontFamily: "var(--font-body)",
-    background: "transparent",
-    border: "1px solid var(--color-border)",
-    borderRadius: "var(--radius-md)",
-    color: "var(--color-text-muted)",
-    cursor: "pointer",
   };
 
   const footerStyle: CSSProperties = {
@@ -55,37 +41,69 @@ export function GatePage({ events, frozenAction, onDecision, onBack }: GatePageP
     marginTop: "auto",
   };
 
-  // Find the incident sealed event
+  const emptyStyle: CSSProperties = {
+    padding: "48px 24px",
+    textAlign: "center",
+    fontSize: "14px",
+    color: "var(--color-text-muted)",
+    background: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-md)",
+  };
+
   const incidentEvent = events.find((e) => e.event_type === "INCIDENT_SEALED");
   const incidentPayload = incidentEvent?.payload as IncidentSealedPayload | undefined;
 
-  // Find the operator decision event
   const decisionEvent = events.find((e) => e.event_type === "OPERATOR_DECISION");
+  const decisionPayload = decisionEvent?.payload as OperatorDecisionPayload | undefined;
+
+  const frozenPayload = frozenAction?.payload as ActionFrozenPayload | undefined;
+  const proposedEvent = events.find(
+    (e) =>
+      e.event_type === "ACTION_PROPOSED" &&
+      (e.payload as ActionProposedPayload).is_irreversible
+  );
+  const proposedPayload = proposedEvent?.payload as ActionProposedPayload | undefined;
+  const frozenEvent = events.find((e) => e.event_type === "ACTION_FROZEN");
+  const citations: Citation[] =
+    ((frozenEvent?.payload as { citations?: Citation[] } | undefined)?.citations) ?? [];
 
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>
-        <h2 style={titleStyle}>Operator Gate</h2>
-        <button style={backButtonStyle} onClick={onBack}>
-          ← Back to Signals
-        </button>
-      </div>
+      <h2 style={titleStyle}>Operator Gate</h2>
 
-      {frozenAction && !decisionEvent && (
+      {!frozenAction && !decisionEvent && (
+        <div style={emptyStyle}>
+          No action is awaiting a decision. When the oversight gate freezes an
+          irreversible action, it will appear here for approval.
+        </div>
+      )}
+
+      {frozenAction && frozenPayload && !decisionEvent && (
         <OperatorGate
           actionId={frozenAction.action_id!}
+          frozenPayload={frozenPayload}
+          proposedPayload={proposedPayload}
+          citations={citations}
           onDecision={onDecision}
         />
       )}
 
       {decisionEvent && (
-        <div style={{ padding: "16px", background: "var(--color-surface)", borderRadius: "var(--radius-md)" }}>
+        <div style={{ padding: "16px", background: "var(--color-surface)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
           <div style={{ fontSize: "14px", color: "var(--color-text-muted)", marginBottom: "8px" }}>
             Decision Made
           </div>
-          <div style={{ fontSize: "18px", fontWeight: "600", color: "var(--color-text)" }}>
-            {(decisionEvent.payload as any)?.decision === "approved" ? "✓ Approved" : "✗ Aborted"}
+          <div style={{ fontSize: "18px", fontWeight: "600", color: decisionPayload?.decision === "approved" ? "var(--color-executed)" : "var(--color-aborted)" }}>
+            {decisionPayload?.decision === "approved"
+              ? "✓ Approved — escalation memo dispatched"
+              : "✗ Aborted — action cancelled"}
           </div>
+          {proposedPayload && (
+            <div style={{ marginTop: "8px", fontSize: "13px", color: "var(--color-text-muted)" }}>
+              {proposedPayload.action}
+            </div>
+          )}
         </div>
       )}
 

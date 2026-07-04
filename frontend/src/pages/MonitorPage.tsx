@@ -1,30 +1,37 @@
-import { type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { SentinelEvent } from "../types";
 import { EventRow } from "../components/EventRow";
 import { FreezeAlert } from "../components/FreezeAlert";
+import { StepRail } from "../components/StepRail";
 import type { ActionFrozenPayload } from "../types";
 
 interface MonitorPageProps {
   events: SentinelEvent[];
-  connected: boolean;
   frozenAction: SentinelEvent | null;
-  onViewSignals: () => void;
+  onViewGate: () => void;
   onRunAgent: () => void;
 }
 
 export function MonitorPage({
   events,
-  connected,
   frozenAction,
-  onViewSignals,
+  onViewGate,
   onRunAgent,
 }: MonitorPageProps) {
+  const streamRef = useRef<HTMLDivElement>(null);
+  const chronological = useMemo(() => [...events].reverse(), [events]);
+
+  useEffect(() => {
+    const el = streamRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [events.length]);
+
   const containerStyle: CSSProperties = {
     display: "flex",
     flexDirection: "column",
     gap: "16px",
     padding: "24px",
-    height: "100vh",
+    height: "100%",
     overflow: "hidden",
   };
 
@@ -35,29 +42,9 @@ export function MonitorPage({
   };
 
   const titleStyle: CSSProperties = {
-    fontSize: "24px",
+    fontSize: "20px",
     fontWeight: "600",
     color: "var(--color-text)",
-  };
-
-  const connectionStyle: CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "12px",
-    fontFamily: "var(--font-mono)",
-  };
-
-  const statusDotStyle: CSSProperties = {
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    background: connected ? "var(--color-executed)" : "var(--color-frozen)",
-  };
-
-  const controlsStyle: CSSProperties = {
-    display: "flex",
-    gap: "12px",
   };
 
   const buttonStyle: CSSProperties = {
@@ -72,13 +59,20 @@ export function MonitorPage({
     cursor: "pointer",
   };
 
+  const bodyStyle: CSSProperties = {
+    display: "flex",
+    gap: "16px",
+    flex: 1,
+    overflow: "hidden",
+  };
+
   const streamStyle: CSSProperties = {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
     flex: 1,
     overflow: "auto",
-    padding: "8px",
+    padding: "2px",
   };
 
   const emptyStyle: CSSProperties = {
@@ -93,14 +87,7 @@ export function MonitorPage({
   return (
     <div style={containerStyle}>
       <div style={headerStyle}>
-        <h1 style={titleStyle}>SENTINEL — Live Monitor</h1>
-        <div style={connectionStyle}>
-          <div style={statusDotStyle} />
-          {connected ? "Connected" : "Disconnected"}
-        </div>
-      </div>
-
-      <div style={controlsStyle}>
+        <h1 style={titleStyle}>Live Monitor</h1>
         <button style={buttonStyle} onClick={onRunAgent}>
           ▶ Run Agent
         </button>
@@ -109,18 +96,21 @@ export function MonitorPage({
       {frozenAction && (
         <FreezeAlert
           payload={frozenAction.payload as ActionFrozenPayload}
-          onClick={onViewSignals}
+          onClick={onViewGate}
         />
       )}
 
-      <div style={streamStyle}>
-        {events.length === 0 ? (
-          <div style={emptyStyle}>
-            No events yet. Click "Run Agent" to start.
-          </div>
-        ) : (
-          events.map((event) => <EventRow key={event.event_id} event={event} />)
-        )}
+      <div style={bodyStyle}>
+        <StepRail events={events} />
+        <div ref={streamRef} style={streamStyle}>
+          {chronological.length === 0 ? (
+            <div style={emptyStyle}>
+              No events yet. Click "Run Agent" to start.
+            </div>
+          ) : (
+            chronological.map((event) => <EventRow key={event.event_id} event={event} />)
+          )}
+        </div>
       </div>
     </div>
   );

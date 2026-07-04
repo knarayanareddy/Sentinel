@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useEventStream } from "./hooks/useEventStream";
+import { AppShell } from "./components/AppShell";
 import { MonitorPage } from "./pages/MonitorPage";
 import { SignalPage } from "./pages/SignalPage";
 import { GatePage } from "./pages/GatePage";
@@ -45,42 +46,44 @@ function AppContent() {
     }
   };
 
+  const decided = events.some((e) => e.event_type === "OPERATOR_DECISION");
+  const gateNeedsAttention = Boolean(frozenAction) && !decided;
+
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <MonitorPage
-            events={events}
-            connected={connected}
-            frozenAction={frozenAction}
-            onViewSignals={() => navigate("/signals")}
-            onRunAgent={handleRunAgent}
-          />
-        }
-      />
-      <Route
-        path="/signals"
-        element={
-          <SignalPage
-            events={events}
-            onBack={() => navigate("/")}
-            onProceedToGate={() => navigate("/gate")}
-          />
-        }
-      />
-      <Route
-        path="/gate"
-        element={
-          <GatePage
-            events={events}
-            frozenAction={frozenAction}
-            onDecision={handleDecision}
-            onBack={() => navigate("/signals")}
-          />
-        }
-      />
-    </Routes>
+    <AppShell connected={connected} gateNeedsAttention={gateNeedsAttention} wide>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <MonitorPage
+              events={events}
+              frozenAction={gateNeedsAttention ? frozenAction : null}
+              onViewGate={() => navigate("/gate")}
+              onRunAgent={handleRunAgent}
+            />
+          }
+        />
+        <Route
+          path="/signals"
+          element={
+            <SignalPage
+              events={events}
+              onProceedToGate={() => navigate("/gate")}
+            />
+          }
+        />
+        <Route
+          path="/gate"
+          element={
+            <GatePage
+              events={events}
+              frozenAction={frozenAction}
+              onDecision={handleDecision}
+            />
+          }
+        />
+      </Routes>
+    </AppShell>
   );
 }
 

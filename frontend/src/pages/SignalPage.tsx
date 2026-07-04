@@ -11,24 +11,17 @@ import type { Citation } from "../types";
 
 interface SignalPageProps {
   events: SentinelEvent[];
-  onBack: () => void;
   onProceedToGate: () => void;
 }
 
-export function SignalPage({ events, onBack, onProceedToGate }: SignalPageProps) {
+export function SignalPage({ events, onProceedToGate }: SignalPageProps) {
   const containerStyle: CSSProperties = {
     display: "flex",
     flexDirection: "column",
     gap: "24px",
     padding: "24px",
-    height: "100vh",
+    height: "100%",
     overflow: "auto",
-  };
-
-  const headerStyle: CSSProperties = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
   };
 
   const titleStyle: CSSProperties = {
@@ -37,15 +30,14 @@ export function SignalPage({ events, onBack, onProceedToGate }: SignalPageProps)
     color: "var(--color-text)",
   };
 
-  const backButtonStyle: CSSProperties = {
-    padding: "8px 16px",
+  const emptyStyle: CSSProperties = {
+    padding: "48px 24px",
+    textAlign: "center",
     fontSize: "14px",
-    fontFamily: "var(--font-body)",
-    background: "transparent",
+    color: "var(--color-text-muted)",
+    background: "var(--color-surface)",
     border: "1px solid var(--color-border)",
     borderRadius: "var(--radius-md)",
-    color: "var(--color-text-muted)",
-    cursor: "pointer",
   };
 
   const cardsStyle: CSSProperties = {
@@ -83,18 +75,29 @@ export function SignalPage({ events, onBack, onProceedToGate }: SignalPageProps)
   const maarsPayload = maarsEvent?.payload as MaarsProbePayload | undefined;
   const citationPayload = citationEvent?.payload as CitationCheckedPayload | undefined;
 
-      // Extract citations from frozen action event
-      const frozenEvent = events.find((e) => e.event_type === "ACTION_FROZEN");
-      const citations: Citation[] = (frozenEvent?.payload as any)?.citations ?? [];
+  // Extract citations from frozen action event
+  const frozenEvent = events.find((e) => e.event_type === "ACTION_FROZEN");
+  const citations: Citation[] =
+    ((frozenEvent?.payload as { citations?: Citation[] } | undefined)?.citations) ?? [];
+
+  const hasSignals = Boolean(driftPayload || maarsPayload || citationPayload);
+
+  if (!hasSignals) {
+    return (
+      <div style={containerStyle}>
+        <h2 style={titleStyle}>Signal Breakdown</h2>
+        <div style={emptyStyle}>
+          No signals yet. Run the agent from the Monitor — drift, MAARS, and
+          citation scores will appear here once the oversight gate evaluates an
+          action.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={containerStyle}>
-      <div style={headerStyle}>
-        <h2 style={titleStyle}>Signal Breakdown</h2>
-        <button style={backButtonStyle} onClick={onBack}>
-          ← Back to Monitor
-        </button>
-      </div>
+      <h2 style={titleStyle}>Signal Breakdown</h2>
 
       <div style={cardsStyle}>
         {driftPayload && (
