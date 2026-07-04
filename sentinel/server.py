@@ -1,13 +1,13 @@
 """
-Minimal FastAPI server for Phase 1.
-Only the lifespan function (vector store initialization) and health endpoint.
-WebSocket, /api/run, /api/decide routes come in later phases.
+FastAPI server for SENTINEL.
+Phase 3: Vector store initialization, health endpoint, and agent trigger.
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from sentinel.vector_store import init_collection, ingest
+from sentinel.agent import run_agent
 
 
 @asynccontextmanager
@@ -43,3 +43,17 @@ app.add_middleware(
 async def health():
     """Health check endpoint for deployment verification."""
     return {"status": "ok"}
+
+
+@app.post("/api/run")
+async def trigger_agent():
+    """
+    Trigger the SENTINEL agent to run the full 7-step loop.
+    The agent runs in a background thread and emits events via EventBus.
+    """
+    print("[SENTINEL] Agent triggered via /api/run")
+    thread = run_agent()
+    return {
+        "status": "agent_started",
+        "message": "Agent running in background. Monitor events via /api/events.",
+    }
