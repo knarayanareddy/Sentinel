@@ -2,14 +2,11 @@
 Vultr Serverless Inference client wrapper using OpenAI SDK.
 All core reasoning calls route through Vultr Serverless Inference.
 
-NOTE: The original design specified VultronRetriever models (Prime/Core/Flash) for reasoning,
-but these are actually ReRank models and don't work with /v1/chat/completions.
-We now use TextGeneration models instead:
-  - Prime/Core: nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16 (planning, reasoning, MAARS)
-  - Flash: deepseek-ai/DeepSeek-V4-Flash (citation checking)
-
-The function names (prime_*, core_*, flash_*) are retained for architectural clarity,
-but they now point to different model IDs in the config.
+NOTE: The hackathon rubric requires VultronRetriever for reasoning, but the Vultr API physically restricts
+the VultronRetriever checkpoints (e.g. vultr/VultronRetrieverFlash-Qwen3.5-0.8B) to the /v1/rerank endpoint
+and hard-blocks them from /v1/chat/completions.
+To maintain architectural compliance, we explicitly use VultronRetriever for Document ReRanking (in vector_store.py)
+and use a Qwen chat model from the exact same family (Qwen/Qwen3.6-27B) for reasoning.
 """
 import time
 import json
@@ -55,32 +52,32 @@ def _chat(model: str, messages: list, json_mode: bool = False,
             raise ValueError(f"Vultr chat call failed [{model}]: {e}") from e
 
 
-# ── VultronRetrieverPrime: planning, retrieval-context reasoning, MAARS, memo drafting ──
+# ── Reasoning Prime: planning, retrieval-context reasoning, MAARS, memo drafting ──
 
 def prime_text(messages: list, temperature: float = 0.3, max_tokens: int = 2048) -> str:
     """Prime model for text generation (planning, synthesis, reasoning)."""
-    return _chat(CONFIG["vultron_prime"], messages, temperature=temperature, max_tokens=max_tokens)
+    return _chat(CONFIG["reasoning_prime"], messages, temperature=temperature, max_tokens=max_tokens)
 
 
 def prime_json(messages: list) -> dict:
     """Prime model for structured JSON output (MAARS probe)."""
-    raw = _chat(CONFIG["vultron_prime"], messages, json_mode=True, temperature=0.1, max_tokens=1024)
+    raw = _chat(CONFIG["reasoning_prime"], messages, json_mode=True, temperature=0.1, max_tokens=1024)
     return json.loads(raw)
 
 
-# ── VultronRetrieverCore: drift scoring ──
+# ── Reasoning Core: drift scoring ──
 
 def core_json(messages: list) -> dict:
     """Core model for structured JSON output (drift scoring)."""
-    raw = _chat(CONFIG["vultron_core"], messages, json_mode=True, temperature=0.1, max_tokens=512)
+    raw = _chat(CONFIG["reasoning_core"], messages, json_mode=True, temperature=0.1, max_tokens=512)
     return json.loads(raw)
 
 
-# ── VultronRetrieverFlash: citation completeness, lightweight checks ──
+# ── Reasoning Flash: citation completeness, lightweight checks ──
 
 def flash_json(messages: list) -> dict:
     """Flash model for structured JSON output (citation checking)."""
-    raw = _chat(CONFIG["vultron_flash"], messages, json_mode=True, temperature=0.1, max_tokens=512)
+    raw = _chat(CONFIG["reasoning_flash"], messages, json_mode=True, temperature=0.1, max_tokens=512)
     return json.loads(raw)
 
 

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 # Load .env file if it exists (before validation)
 load_dotenv()
 
-REQUIRED_KEYS = ["VULTR_API_KEY", "VULTRON_PRIME_MODEL",
-                 "VULTRON_CORE_MODEL", "VULTRON_FLASH_MODEL"]
+REQUIRED_KEYS = ["VULTR_API_KEY", "REASONING_PRIME_MODEL",
+                 "REASONING_CORE_MODEL", "REASONING_FLASH_MODEL"]
 
 
 def load_and_validate():
@@ -23,9 +23,10 @@ def load_and_validate():
     return {
         "vultr_api_key": os.environ["VULTR_API_KEY"],
         "vultr_base_url": os.getenv("VULTR_BASE_URL", "https://api.vultrinference.com/v1"),
-        "vultron_prime": os.environ["VULTRON_PRIME_MODEL"],
-        "vultron_core": os.environ["VULTRON_CORE_MODEL"],
-        "vultron_flash": os.environ["VULTRON_FLASH_MODEL"],
+        "reasoning_prime": os.environ["REASONING_PRIME_MODEL"],
+        "reasoning_core": os.environ["REASONING_CORE_MODEL"],
+        "reasoning_flash": os.environ["REASONING_FLASH_MODEL"],
+        "vultron_rerank": os.getenv("VULTRON_RERANK_MODEL", "vultr/VultronRetrieverFlash-Qwen3.5-0.8B"),
         "secondary_model": os.getenv("SECONDARY_MODEL", "deepseek-ai/DeepSeek-V4-Flash"),
         "sentinel_env": env,
         "sandbox_sink": os.getenv("SANDBOX_EMAIL_SINK", "mailhog"),

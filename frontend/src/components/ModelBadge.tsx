@@ -6,10 +6,9 @@ interface ModelBadgeProps {
 
 // Map full model names to short display names
 const MODEL_SHORT_NAMES: Record<string, string> = {
-  "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16": "Prime",
-  "nvidia/llama-3.2-1b-instruct": "Core",
-  "nvidia/llama-3.2-3b-instruct": "Flash",
-  "deepseek-ai/DeepSeek-V4-Flash": "Secondary",
+  "Qwen/Qwen3.6-27B": "Prime", // Used for both Prime and Core reasoning
+  "deepseek-ai/DeepSeek-V4-Flash": "Flash",
+  "vultr/VultronRetrieverFlash-Qwen3.5-0.8B": "ReRank",
 };
 
 export function ModelBadge({ model }: ModelBadgeProps) {

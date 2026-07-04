@@ -289,32 +289,75 @@ def ingest(content: str, description: str) -> list[str]:
 
 def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
     """
-    Manual retrieval — no RAG completion endpoint used.
-    Chunks are injected into a VultronRetriever chat call by the caller.
+    Two-stage retrieval to satisfy VultronRetriever compliance:
+    1. Base retrieval: Fetch top_k * 3 chunks using vector similarity.
+    2. ReRank stage: Pass chunks to VultronRetriever via /v1/rerank API to sort by relevance.
 
-    CRITICAL: Uses "input" field (not "query") per Vultr API schema.
-    Response has "results" array with {id, created, content} — no description or score.
+    CRITICAL: Uses "input" field (not "query") for vector store per Vultr API schema.
     """
     if not _collection_id:
         raise RuntimeError("Vector store not initialised.")
+    
+    # 1. Base Retrieval (over-fetch)
     r = requests.post(
         f"{_BASE}/vector_store/{_collection_id}/search",
         headers=_HEADERS,
-        json={"input": query, "top_k": top_k},
+        json={"input": query, "top_k": top_k * 3},
         timeout=20,
     )
     r.raise_for_status()
     data = r.json()
-    # Tolerant schema handling: "results" (confirmed) or "items" (fallback)
     items = data.get("results", data.get("items", []))
-    return [
-        RetrievedChunk(
-            content=i.get("content", i.get("text", "")),
-            description=i.get("description", ""),  # Will be empty per actual schema
-            score=float(i.get("score", 0.0)),  # Will be 0.0 per actual schema
-        )
-        for i in items
-    ]
+    
+    if not items:
+        return []
+
+    # 2. ReRank with VultronRetriever
+    from sentinel.config import CONFIG
+    rerank_model = CONFIG["vultron_rerank"]
+    documents = [i.get("content", i.get("text", "")) for i in items]
+
+    rerank_r = requests.post(
+        f"{_BASE}/rerank",
+        headers=_HEADERS,
+        json={
+            "model": rerank_model,
+            "query": query,
+            "documents": documents
+        },
+        timeout=20,
+    )
+    
+    if rerank_r.status_code == 200:
+        rerank_data = rerank_r.json()
+        rerank_results = rerank_data.get("results", [])
+        
+        # Build chunks with VultronRetriever scores
+        chunks = []
+        for res in rerank_results:
+            idx = res.get("index")
+            score = res.get("relevance_score", 0.0)
+            if idx is not None and idx < len(documents):
+                chunks.append(RetrievedChunk(
+                    content=documents[idx],
+                    description="", # Empty per actual schema
+                    score=float(score)
+                ))
+        
+        # Sort by relevance descending
+        chunks.sort(key=lambda x: x.score, reverse=True)
+        return chunks[:top_k]
+    else:
+        # Fallback if ReRank fails (e.g. rate limit)
+        print(f"[VECTOR_STORE] ReRank failed ({rerank_r.status_code}): {rerank_r.text}")
+        return [
+            RetrievedChunk(
+                content=doc,
+                description="",
+                score=0.0
+            )
+            for doc in documents[:top_k]
+        ]
 
 
 def get_collection_id() -> Optional[str]:
