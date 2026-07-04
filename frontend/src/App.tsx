@@ -12,10 +12,12 @@ function AppContent() {
   const navigate = useNavigate();
   const { events, connected, frozenAction } = useEventStream();
 
-  const handleRunAgent = async () => {
+  const handleRunAgent = async (scenario: string) => {
     try {
       const response = await fetch(`${API_URL}/api/run`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario }),
       });
       if (!response.ok) {
         console.error("Failed to start agent:", response.statusText);

@@ -74,3 +74,8 @@ class DecisionRequest(BaseModel):
     """Request model for the /api/decide endpoint."""
     action_id: str
     approved: bool
+
+
+class RunRequest(BaseModel):
+    """Request model for the /api/run endpoint."""
+    scenario: str = "breach"

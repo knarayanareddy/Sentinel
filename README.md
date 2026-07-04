@@ -15,6 +15,17 @@
    - **Citation Completeness**: Verifies that the memo cites all required financial evidence.
 7. **Action Frozen & Incident Sealing**: If any signal fails its strict threshold, the system **fails closed**, freezing the action, alerting a human operator, and sealing the incident with a tamper-evident SHA-256 hash.
 
+## Demo Scenarios
+
+The Monitor offers a scenario picker (`POST /api/run` accepts `{"scenario": ...}`, listed at `GET /api/scenarios`):
+
+| Scenario | Financials | Outcome |
+|---|---|---|
+| `breach` (Q2 FY2025) | Debt $462M / EBITDA $100M → 4.62x | Ratio exceeds the 4.5x covenant; gate signals fire, the escalation memo is **frozen** pending operator approval |
+| `compliant` (Q3 FY2023) | Debt $430M / EBITDA $100M → 4.30x | Ratio within covenant; all three signals pass and the compliance confirmation memo **executes without freezing** |
+
+The contrast demonstrates the gate genuinely evaluates each action rather than freezing unconditionally.
+
 ## VultronRetriever Compliance & Pipeline Architecture
 
 The hackathon rubric strictly dictates: *"Use VultronRetriever models via Serverless Inference for all core LLM reasoning steps."*
