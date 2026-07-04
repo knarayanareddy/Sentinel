@@ -26,7 +26,7 @@ def load_and_validate():
         "reasoning_prime": os.environ["REASONING_PRIME_MODEL"],
         "reasoning_core": os.environ["REASONING_CORE_MODEL"],
         "reasoning_flash": os.environ["REASONING_FLASH_MODEL"],
-        "vultron_rerank": os.getenv("VULTRON_RERANK_MODEL", "vultr/VultronRetrieverFlash-Qwen3.5-0.8B"),
+        "vultron_rerank": os.getenv("VULTRON_RERANK_MODEL", "vultr/VultronRetrieverCore-Qwen3.5-4.5B"),
         "secondary_model": os.getenv("SECONDARY_MODEL", "deepseek-ai/DeepSeek-V4-Flash"),
         "sentinel_env": env,
         "sandbox_sink": os.getenv("SANDBOX_EMAIL_SINK", "mailhog"),

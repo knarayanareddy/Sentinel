@@ -4,7 +4,7 @@ Phase 5: WebSocket broadcasting + all previous phases.
 """
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from sentinel import broadcaster, eventbus
@@ -13,7 +13,8 @@ from sentinel.agent import run_agent, TASK_BRIEF
 from sentinel.pipeline import SentinelPipeline
 from sentinel.sequencer import seal_incident
 from sentinel.models import DecisionRequest
-from sentinel.orchestrator import get_action, resolve_frozen
+from sentinel.orchestrator import get_action, register_tool_executor, resolve_frozen
+from sentinel.tools import send_memo
 
 
 @asynccontextmanager
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
     # Initialize the Sentinel pipeline (sets up the freeze policy)
     print("[SENTINEL] Initializing Sentinel pipeline...")
     SentinelPipeline(task_brief=TASK_BRIEF)
+    register_tool_executor("send_escalation_memo", send_memo.run)
     print("[SENTINEL] Sentinel pipeline initialized.")
     
     # Wire broadcaster to eventbus for WebSocket streaming
@@ -71,6 +73,8 @@ async def websocket_endpoint(ws: WebSocket):
     Clients receive all SentinelEvents as JSON messages.
     """
     await ws.accept()
+    for payload in broadcaster.get_history():
+        await ws.send_text(payload)
     broadcaster.register_client(ws)
     print(f"[SENTINEL] WebSocket client connected. Total clients: {len(broadcaster._clients)}")
     try:
@@ -104,10 +108,13 @@ async def decide(request: DecisionRequest):
     """
     action = get_action(request.action_id)
     if not action:
-        return {"error": "Action not found"}
-    
+        raise HTTPException(status_code=404, detail="Action not found")
+
     if action.status.value != "frozen":
-        return {"error": f"Action is not frozen (current status: {action.status.value})"}
+        raise HTTPException(
+            status_code=409,
+            detail=f"Action is not frozen (current status: {action.status.value})",
+        )
     
     # Resolve the frozen action
     resolve_frozen(request.action_id, request.approved)

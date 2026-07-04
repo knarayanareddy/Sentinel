@@ -5,11 +5,25 @@ from sentinel.eventbus import emit
 
 _action_registry: dict[str, Action] = {}
 _freeze_policy: Optional[Callable] = None
+_tool_executors: dict[str, Callable] = {}
 
 
 def set_freeze_policy(fn: Callable):
     global _freeze_policy
     _freeze_policy = fn
+
+
+def register_tool_executor(tool_name: str, fn: Callable):
+    """Register the function that actually performs a tool's side effect."""
+    _tool_executors[tool_name] = fn
+
+
+def _execute_tool(action: Action) -> Optional[dict]:
+    """Run the registered executor for an action's tool, if any."""
+    fn = _tool_executors.get(action.tool_name)
+    if fn is None:
+        return None
+    return fn(**action.parameters)
 
 
 def attempt_action(action: Action) -> Action:
@@ -35,9 +49,19 @@ def attempt_action(action: Action) -> Action:
                                     "citation_score": action.citation_score,
                                     "citations": [{"document": c.document, "clause": c.clause, "excerpt": c.excerpt} for c in action.citations] if action.citations else []}))
     else:
+        result = None
+        if action.is_irreversible:
+            try:
+                result = _execute_tool(action)
+            except Exception as e:
+                action.status = ActionStatus.FROZEN
+                action.freeze_reason = f"tool execution failed: {e}"
+                emit(SentinelEvent(event_type=EventType.ACTION_FROZEN, action_id=action.action_id,
+                                   payload={"freeze_reason": action.freeze_reason}))
+                return action
         action.status = ActionStatus.EXECUTED
         emit(SentinelEvent(event_type=EventType.ACTION_EXECUTED, action_id=action.action_id,
-                           payload={"action": action.description}))
+                           payload={"action": action.description, "execution_result": result}))
     return action
 
 
@@ -48,9 +72,21 @@ def resolve_frozen(action_id: str, approved: bool) -> Action:
     action.status = ActionStatus.RESUMED if approved else ActionStatus.ABORTED
     action.operator_decision = "approved" if approved else "aborted"
     action.resolved_at = time.time()
+    execution_result = None
+    if approved:
+        try:
+            execution_result = _execute_tool(action)
+            if execution_result is not None:
+                emit(SentinelEvent(event_type=EventType.ACTION_EXECUTED, action_id=action_id,
+                                   payload={"action": action.description,
+                                            "execution_result": execution_result}))
+        except Exception as e:
+            emit(SentinelEvent(event_type=EventType.ERROR, action_id=action_id,
+                               payload={"message": f"Tool execution failed after approval: {e}"}))
     emit(SentinelEvent(event_type=EventType.OPERATOR_DECISION, action_id=action_id,
                        payload={"decision": action.operator_decision,
-                                "resolved_at": action.resolved_at}))
+                                "resolved_at": action.resolved_at,
+                                "execution_result": execution_result}))
     return action
 
 
