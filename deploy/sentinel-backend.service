@@ -1,0 +1,16 @@
+[Unit]
+Description=SENTINEL Backend API Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/sentinel
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/sentinel/.env
+ExecStart=/usr/local/bin/uvicorn sentinel.server:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
