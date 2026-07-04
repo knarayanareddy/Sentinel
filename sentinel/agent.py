@@ -90,7 +90,7 @@ def _agent_loop():
 
     # ── Step 2: RETRIEVE-1 — covenant definition ──
     print("[AGENT] Step 2: Retrieving covenant definition...")
-    chunks_1 = search(
+    chunks_1, rerank_model = search(
         "Debt/EBITDA covenant threshold and breach conditions", top_k=3
     )
     r1 = _reason_over(
@@ -105,6 +105,7 @@ def _agent_loop():
                 c.description or f"chunk_{i}" for i, c in enumerate(chunks_1)
             ],
             "reasoning_model": CONFIG["reasoning_prime"],
+            "rerank_model": rerank_model,
             "result_summary": r1[:200],
         },
     ))
@@ -112,7 +113,7 @@ def _agent_loop():
 
     # ── Step 3: RETRIEVE-2 — historical trend ──
     print("[AGENT] Step 3: Retrieving historical ratio trend...")
-    chunks_2 = search(
+    chunks_2, rerank_model = search(
         "historical Debt/EBITDA ratio trend past 8 quarters", top_k=3
     )
     r2 = _reason_over("What is the historical ratio trend?", chunks_2)
@@ -125,6 +126,7 @@ def _agent_loop():
                 c.description or f"chunk_{i}" for i, c in enumerate(chunks_2)
             ],
             "reasoning_model": CONFIG["reasoning_prime"],
+            "rerank_model": rerank_model,
             "result_summary": r2[:200],
         },
     ))
@@ -133,14 +135,14 @@ def _agent_loop():
     # ── Step 4: TOOL-CALL — deterministic ratio calculation ──
     print("[AGENT] Step 4: Calculating Debt/EBITDA ratio...")
     ratio_result = calculate_ratio.run(
-        debt=460_000_000, ebitda=100_000_000
+        debt=462_000_000, ebitda=100_000_000
     )
     emit(SentinelEvent(
         event_type=EventType.TOOL_CALLED,
         payload={
             "tool_name": "calculate_ratio",
             "parameters": {
-                "debt": 460_000_000,
+                "debt": 462_000_000,
                 "ebitda": 100_000_000,
             },
             "result_summary": (
@@ -157,7 +159,7 @@ def _agent_loop():
     if breach_detected:
         print(f"[AGENT] Step 5: BREACH DETECTED ({ratio_result['ratio']:.2f}x > 4.5x). "
               f"Retrieving transaction root cause...")
-        chunks_3 = search(
+        chunks_3, rerank_model = search(
             "transactions contributing to Q2 EBITDA decline", top_k=3
         )
         r3 = _reason_over(
@@ -173,6 +175,7 @@ def _agent_loop():
                     for i, c in enumerate(chunks_3)
                 ],
                 "reasoning_model": CONFIG["reasoning_prime"],
+                "rerank_model": rerank_model,
                 "result_summary": r3[:200],
             },
         ))

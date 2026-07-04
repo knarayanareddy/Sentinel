@@ -287,17 +287,21 @@ def ingest(content: str, description: str) -> list[str]:
     return ingested_ids
 
 
-def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
+def search(query: str, top_k: int = 3) -> tuple[list[RetrievedChunk], str]:
     """
     Two-stage retrieval to satisfy VultronRetriever compliance:
     1. Base retrieval: Fetch top_k * 3 chunks using vector similarity.
     2. ReRank stage: Pass chunks to VultronRetriever via /v1/rerank API to sort by relevance.
 
     CRITICAL: Uses "input" field (not "query") for vector store per Vultr API schema.
+    Returns: (chunks, rerank_model)
     """
     if not _collection_id:
         raise RuntimeError("Vector store not initialised.")
     
+    from sentinel.config import CONFIG
+    rerank_model = CONFIG.get("vultron_rerank", "vultr/VultronRetrieverFlash-Qwen3.5-0.8B")
+
     # 1. Base Retrieval (over-fetch)
     r = requests.post(
         f"{_BASE}/vector_store/{_collection_id}/search",
@@ -310,11 +314,9 @@ def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
     items = data.get("results", data.get("items", []))
     
     if not items:
-        return []
+        return [], rerank_model
 
     # 2. ReRank with VultronRetriever
-    from sentinel.config import CONFIG
-    rerank_model = CONFIG["vultron_rerank"]
     documents = [i.get("content", i.get("text", "")) for i in items]
 
     rerank_r = requests.post(
@@ -346,7 +348,7 @@ def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
         
         # Sort by relevance descending
         chunks.sort(key=lambda x: x.score, reverse=True)
-        return chunks[:top_k]
+        return chunks[:top_k], rerank_model
     else:
         # Fallback if ReRank fails (e.g. rate limit)
         print(f"[VECTOR_STORE] ReRank failed ({rerank_r.status_code}): {rerank_r.text}")
@@ -357,7 +359,7 @@ def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
                 score=0.0
             )
             for doc in documents[:top_k]
-        ]
+        ], rerank_model
 
 
 def get_collection_id() -> Optional[str]:

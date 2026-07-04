@@ -25,13 +25,13 @@ cryptographically-hashed, citation-backed incident record.
 
 | Requirement | How SENTINEL Satisfies It |
 |---|---|
-| VultronRetriever as core reasoning engine | All planning, drift scoring, MAARS probing, and memo synthesis calls route through VultronRetrieverPrime/Core/Flash |
+| VultronRetriever as core reranking engine | All retrieval passes are reranked by VultronRetriever |
 | Multi-step, not retrieve-then-answer | 7-step loop: plan → retrieve×3 (conditional) → tool call → synthesise → act |
 | Grounds decisions in documents | Every irreversible action carries a `citations[]` list resolved against retrieved chunks |
 | Plans, retrieves repeatedly, calls tools, decides, produces usable outcome | Explicit `AGENT_PLAN` step, 3 conditional retrieval passes, `calculate_ratio` tool, escalation memo output |
 | Backend deployed on Vultr | Phase 6.5 — Vultr Cloud Compute VM, public IP |
 | Public demo URL | Delivered at Phase 6.5 |
-| Secondary models allowed for non-core tasks | Optional `qwen2.5-32b-instruct` used only for UI-facing polish text, never for core reasoning |
+| Secondary models allowed for non-core tasks | Optional `qwen2.5-32b-instruct` used only for UI-facing polish text |
 
 ---
 

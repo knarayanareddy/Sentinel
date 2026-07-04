@@ -37,6 +37,7 @@ export type RetrievalPassPayload = {
   query: string;
   documents_retrieved: string[];
   reasoning_model: string;
+  rerank_model?: string;
   result_summary: string;
 };
 

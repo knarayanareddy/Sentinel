@@ -36,6 +36,21 @@ To maintain 100% architectural integrity without faking model IDs (a common pitf
 | Outcome a real team could use | Escalation memo with citations, human approve/abort gate, tamper-evident SHA-256 incident records |
 | Backend deployed on Vultr | FastAPI + nginx on a Vultr Ubuntu VM (`deploy/`) |
 
+### Try it yourself (API Proof)
+
+You can verify the API restriction by running this curl command with a valid Vultr API key. The chat completions endpoint will reject the model, proving that it must be used for reranking instead:
+
+```bash
+curl -X POST https://api.vultrinference.com/v1/chat/completions \
+  -H "Authorization: Bearer $VULTR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "vultr/VultronRetrieverFlash-Qwen3.5-0.8B",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+# Expected: 400 Bad Request / Model unsupported for this endpoint
+```
+
 ## Deployment
 
 The application is deployed on a Vultr Ubuntu VM.

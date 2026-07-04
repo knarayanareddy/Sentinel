@@ -116,6 +116,7 @@ export function EventRow({ event }: EventRowProps) {
                 passNumber={payload.pass_number}
                 documentsRetrieved={payload.documents_retrieved}
               />
+              {payload.rerank_model && <ModelBadge model={payload.rerank_model} />}
               <ModelBadge model={payload.reasoning_model} />
             </div>
           </div>

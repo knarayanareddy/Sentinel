@@ -12,21 +12,20 @@ Borders 1px, radius ≤4px. No gradients, no shadows, no blur.
 Screen 1 — Live Agent Monitor
   - Event stream, newest first
   - RETRIEVAL_PASS rows show pass number, documents retrieved, and
-    reasoning_model badge (e.g. "VultronRetrieverPrime")
+    reasoning_model badge
   - TOOL_CALLED rows show tool name + result
   - ACTION_FROZEN row: full-width red takeover
 
 Screen 2 — Signal Breakdown (on freeze)
   - Three cards: Covenant Drift (Core model badge), MAARS Verdict (Prime
     model badge), Citation Score (Flash model badge)
-  - Each card shows: score, reasoning, and which VultronRetriever tier ran it
+  - Each card shows: score, reasoning, and which model tier ran it
   - Citations list below with document/clause/excerpt/retrieval_score
 
 Screen 3 — Operator Gate + Incident Record
   - APPROVE (green, full-width) / ABORT (red outline, same weight)
   - Incident JSON preview + SHA-256 hash, labelled explicitly
-  - Model attribution footer: "Reasoning by VultronRetrieverPrime/Core/Flash
-    via Vultr Serverless Inference"
+  - Model attribution footer: "Reasoning by Qwen models. Retrieval by VultronRetriever."
 
 ## Impeccable Workflow
   impeccable build --product docs/PRODUCT.md --design docs/DESIGN.md <component>
@@ -35,7 +34,7 @@ Screen 3 — Operator Gate + Incident Record
 
 ## Non-Negotiables
 - Freeze visible within 200ms of event
-- Every signal card shows its VultronRetriever model attribution
+- Every signal card shows its model attribution
 - Citations visible by default
 - Operator buttons full-width, equal visual weight
 - Incident hash visible, labelled "SHA-256", copyable
