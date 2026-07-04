@@ -32,7 +32,8 @@ def attempt_action(action: Action) -> Action:
                                     "drift_score": action.drift_score,
                                     "maars_verdict": action.maars_verdict,
                                     "maars_confidence": action.maars_confidence,
-                                    "citation_score": action.citation_score}))
+                                    "citation_score": action.citation_score,
+                                    "citations": [{"document": c.document, "clause": c.clause, "excerpt": c.excerpt} for c in action.citations] if action.citations else []}))
     else:
         action.status = ActionStatus.EXECUTED
         emit(SentinelEvent(event_type=EventType.ACTION_EXECUTED, action_id=action.action_id,

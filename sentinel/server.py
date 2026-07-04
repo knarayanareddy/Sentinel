@@ -92,7 +92,7 @@ async def trigger_agent():
     thread = run_agent()
     return {
         "status": "agent_started",
-        "message": "Agent running in background. Monitor events via /api/events.",
+        "message": "Agent running in background. Monitor events via WebSocket at /ws.",
     }
 
 

@@ -92,7 +92,7 @@ export function GatePage({ events, frozenAction, onDecision, onBack }: GatePageP
       {incidentPayload && <IncidentRecord payload={incidentPayload} />}
 
       <div style={footerStyle}>
-        Reasoning by VultronRetriever models via Vultr Serverless Inference
+        Reasoning by Qwen models. Retrieval by VultronRetriever.
       </div>
     </div>
   );

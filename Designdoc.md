@@ -12,11 +12,10 @@ Here is the complete, fully revised Single Source of Truth design document — V
 
 ## 0. North Star
 
-SENTINEL is a **multi-step enterprise document agent powered entirely by
-VultronRetriever models** running on Vultr Serverless Inference. It ingests
+SENTINEL is a **multi-step enterprise document agent powered by a dual-stage pipeline** running on Vultr Serverless Inference. It ingests
 real financial documents, plans an investigation, retrieves from a Vultr
-Vector Store across multiple passes, reasons over retrieved evidence using
-VultronRetriever, calls tools, and — before executing any irreversible
+Vector Store across multiple passes, re-ranks retrieved evidence using
+VultronRetriever, reasons over the evidence using Qwen models, calls tools, and — before executing any irreversible
 action — routes through a human oversight gate that produces a
 cryptographically-hashed, citation-backed incident record.
 

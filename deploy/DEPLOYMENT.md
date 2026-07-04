@@ -52,9 +52,10 @@ Ensure these values are set:
 ```bash
 VULTR_API_KEY=your_actual_vultr_api_key
 VULTR_BASE_URL=https://api.vultrinference.com/v1
-VULTRON_PRIME_MODEL=nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16
-VULTRON_CORE_MODEL=nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16
-VULTRON_FLASH_MODEL=nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16
+REASONING_PRIME_MODEL=Qwen/Qwen3.6-27B
+REASONING_CORE_MODEL=Qwen/Qwen3.6-27B
+REASONING_FLASH_MODEL=deepseek-ai/DeepSeek-V4-Flash
+VULTRON_RERANK_MODEL=vultr/VultronRetrieverFlash-Qwen3.5-0.8B
 SANDBOX_EMAIL_SINK=mailhog
 SENTINEL_ENV=production
 ```
