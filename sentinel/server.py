@@ -7,13 +7,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from sentinel.vector_store import init_collection, ingest
-from sentinel.agent import run_agent
+from sentinel.agent import run_agent, TASK_BRIEF
+from sentinel.pipeline import SentinelPipeline
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    On startup: initialize the vector store and ingest all demo corpus documents.
+    On startup: initialize the vector store, ingest documents, and set up the Sentinel pipeline.
     """
     print("[SENTINEL] Initializing vector store...")
     init_collection()
@@ -27,6 +28,12 @@ async def lifespan(app: FastAPI):
         print(f"[SENTINEL] Ingested: {description} (item_id: {item_id})")
 
     print(f"[SENTINEL] Ingested {len(list(corpus_dir.glob('*.md')))} documents into vector store.")
+    
+    # Initialize the Sentinel pipeline (sets up the freeze policy)
+    print("[SENTINEL] Initializing Sentinel pipeline...")
+    SentinelPipeline(task_brief=TASK_BRIEF)
+    print("[SENTINEL] Sentinel pipeline initialized.")
+    
     yield
 
 
