@@ -1,5 +1,9 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load .env file if it exists (before validation)
+load_dotenv()
 
 REQUIRED_KEYS = ["VULTR_API_KEY", "VULTRON_PRIME_MODEL",
                  "VULTRON_CORE_MODEL", "VULTRON_FLASH_MODEL"]
