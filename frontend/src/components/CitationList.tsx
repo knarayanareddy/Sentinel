@@ -1,11 +1,14 @@
-import { type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import type { Citation } from "../types";
+import { DocumentDrawer } from "./DocumentDrawer";
 
 interface CitationListProps {
   citations: Citation[];
 }
 
 export function CitationList({ citations }: CitationListProps) {
+  const [openCitation, setOpenCitation] = useState<Citation | null>(null);
+
   if (!citations || citations.length === 0) {
     return (
       <div style={{ padding: "12px", color: "var(--color-text-muted)", fontSize: "13px" }}>
@@ -31,6 +34,11 @@ export function CitationList({ citations }: CitationListProps) {
     background: "rgba(0, 0, 0, 0.2)",
     borderRadius: "var(--radius-sm)",
     border: "1px solid var(--color-border)",
+    cursor: "pointer",
+    textAlign: "left",
+    width: "100%",
+    font: "inherit",
+    color: "inherit",
   };
 
   const headerStyle: CSSProperties = {
@@ -50,6 +58,12 @@ export function CitationList({ citations }: CitationListProps) {
     color: "var(--color-text-muted)",
   };
 
+  const openHintStyle: CSSProperties = {
+    fontSize: "11px",
+    fontFamily: "var(--font-mono)",
+    color: "var(--color-text-muted)",
+  };
+
   const excerptStyle: CSSProperties = {
     fontSize: "13px",
     color: "var(--color-text)",
@@ -66,7 +80,12 @@ export function CitationList({ citations }: CitationListProps) {
   return (
     <div style={containerStyle}>
       {citations.map((citation, idx) => (
-        <div key={idx} style={citationStyle}>
+        <button
+          key={idx}
+          style={citationStyle}
+          onClick={() => setOpenCitation(citation)}
+          title={`Open ${citation.document}`}
+        >
           <div style={headerStyle}>
             <span style={documentStyle}>{citation.document}</span>
             <span style={clauseStyle}>{citation.clause}</span>
@@ -74,13 +93,23 @@ export function CitationList({ citations }: CitationListProps) {
           <div style={excerptStyle}>
             "{citation.excerpt}"
           </div>
-          {citation.retrieval_score !== undefined && (
-            <div style={scoreStyle}>
-              Score: {citation.retrieval_score.toFixed(3)}
-            </div>
-          )}
-        </div>
+          <div style={headerStyle}>
+            {citation.retrieval_score !== undefined ? (
+              <span style={scoreStyle}>Score: {citation.retrieval_score.toFixed(3)}</span>
+            ) : (
+              <span />
+            )}
+            <span style={openHintStyle}>View source →</span>
+          </div>
+        </button>
       ))}
+      {openCitation && (
+        <DocumentDrawer
+          documentName={openCitation.document}
+          excerpt={openCitation.excerpt}
+          onClose={() => setOpenCitation(null)}
+        />
+      )}
     </div>
   );
 }

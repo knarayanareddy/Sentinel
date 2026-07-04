@@ -66,6 +66,21 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/api/corpus")
+async def corpus():
+    """
+    Return the ingested document corpus so the UI can render source
+    documents behind citations.
+    """
+    corpus_dir = Path("docs/demo_corpus")
+    return {
+        "documents": [
+            {"name": doc.name, "content": doc.read_text()}
+            for doc in sorted(corpus_dir.glob("*.md"))
+        ]
+    }
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     """
