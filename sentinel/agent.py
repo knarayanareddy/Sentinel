@@ -23,6 +23,19 @@ import sentinel.orchestrator as orchestrator
 from sentinel.tools import calculate_ratio, draft_memo
 from sentinel.config import CONFIG
 
+SCENARIOS = {
+    "breach": {
+        "label": "Q2 FY2025 — covenant breach",
+        "debt": 462_000_000,
+        "ebitda": 100_000_000,
+    },
+    "compliant": {
+        "label": "Q3 FY2023 — compliant quarter",
+        "debt": 430_000_000,
+        "ebitda": 100_000_000,
+    },
+}
+
 TASK_BRIEF = """
 You are a covenant monitoring agent for a corporate finance team.
 Your task: analyse the Debt/EBITDA covenant in the credit agreement,
@@ -32,9 +45,9 @@ escalation memo if a breach is detected.
 """
 
 
-def run_agent():
+def run_agent(scenario: str = "breach"):
     """Start the agent loop in a background daemon thread."""
-    thread = threading.Thread(target=_agent_loop, daemon=True)
+    thread = threading.Thread(target=_agent_loop, args=(scenario,), daemon=True)
     thread.start()
     return thread
 
@@ -64,11 +77,13 @@ def _reason_over(query: str, chunks) -> str:
     ])
 
 
-def _agent_loop():
+def _agent_loop(scenario: str = "breach"):
     """
     The full 7-step agent loop.
     Each step emits an event via the EventBus for real-time UI updates.
     """
+    financials = SCENARIOS.get(scenario, SCENARIOS["breach"])
+    print(f"[AGENT] Scenario: {financials['label']}")
     print("[AGENT] Step 1: Planning investigation...")
 
     # ── Step 1: PLAN ──
@@ -135,15 +150,15 @@ def _agent_loop():
     # ── Step 4: TOOL-CALL — deterministic ratio calculation ──
     print("[AGENT] Step 4: Calculating Debt/EBITDA ratio...")
     ratio_result = calculate_ratio.run(
-        debt=462_000_000, ebitda=100_000_000
+        debt=financials["debt"], ebitda=financials["ebitda"]
     )
     emit(SentinelEvent(
         event_type=EventType.TOOL_CALLED,
         payload={
             "tool_name": "calculate_ratio",
             "parameters": {
-                "debt": 462_000_000,
-                "ebitda": 100_000_000,
+                "debt": financials["debt"],
+                "ebitda": financials["ebitda"],
             },
             "result_summary": (
                 f"Debt/EBITDA = {ratio_result['ratio']:.2f}x "
@@ -185,16 +200,21 @@ def _agent_loop():
               f"Skipping conditional retrieval.")
 
     # ── Step 6: SYNTHESISE — draft memo (reversible) ──
-    print("[AGENT] Step 6: Drafting escalation memo...")
+    print("[AGENT] Step 6: Drafting memo...")
     memo_text = draft_memo.run(
         ratio=ratio_result["ratio"],
         threshold=4.5,
         covenant_context=r1,
         historical_context=r2,
         transaction_context=r3,
+        breach=breach_detected,
     )
     memo_action = Action(
-        description="Draft escalation memo for compliance team",
+        description=(
+            "Draft escalation memo for compliance team"
+            if breach_detected
+            else "Draft compliance confirmation memo"
+        ),
         tool_name="draft_memo",
         parameters={"ratio": ratio_result["ratio"]},
         is_irreversible=False,
@@ -256,5 +276,38 @@ def _agent_loop():
         )
         orchestrator.attempt_action(send_action)
     else:
-        print("[AGENT] Step 7: No breach detected. No escalation needed.")
-        print("[AGENT] Agent loop complete.")
+        print("[AGENT] Step 7: No breach. Sending compliance confirmation memo...")
+        print("[AGENT] SENTINEL gate will evaluate this action.")
+        confirm_action = Action(
+            description=(
+                f"Send quarterly compliance confirmation memo to the compliance team. "
+                f"Debt/EBITDA ratio is {ratio_result['ratio']:.2f}x, within the "
+                f"4.5x covenant threshold (§4.2). No escalation required."
+            ),
+            tool_name="send_confirmation_memo",
+            parameters={
+                "recipient": "compliance@example.com",
+                "memo": memo_text,
+            },
+            is_irreversible=True,
+            citations=[
+                RetrievalCitation(
+                    "credit_agreement.md",
+                    "covenant_definition",
+                    r1[:80],
+                ),
+                RetrievalCitation(
+                    "credit_agreement.md",
+                    "breach_threshold",
+                    "The Borrower shall not permit the ratio of Consolidated Total Debt to "
+                    "Consolidated EBITDA to exceed 4.50 to 1.00",
+                ),
+                RetrievalCitation(
+                    "historical_ratios.md",
+                    "historical_trend",
+                    r2[:80],
+                ),
+            ],
+        )
+        orchestrator.attempt_action(confirm_action)
+    print("[AGENT] Agent loop complete.")

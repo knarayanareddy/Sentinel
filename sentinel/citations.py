@@ -17,6 +17,15 @@ REQUIRED_CLAUSES = [
     "transaction_evidence",
 ]
 
+# Confirmation memos report no anomaly, so no transaction evidence is required.
+REQUIRED_CLAUSES_BY_TOOL = {
+    "send_confirmation_memo": [
+        "covenant_definition",
+        "breach_threshold",
+        "historical_trend",
+    ],
+}
+
 
 def check_citation_completeness(action: Action) -> tuple[float, list[str], str]:
     """
@@ -25,11 +34,12 @@ def check_citation_completeness(action: Action) -> tuple[float, list[str], str]:
     """
     model_name = CONFIG["reasoning_flash"]
     cited = [c.clause for c in action.citations] or ["(none)"]
+    required = REQUIRED_CLAUSES_BY_TOOL.get(action.tool_name, REQUIRED_CLAUSES)
 
     messages = [
         {"role": "system", "content": "You are a compliance evidence auditor."},
         {"role": "user", "content": f"""Cited clauses: {cited}
-Required categories: {REQUIRED_CLAUSES}
+Required categories: {required}
 
 Return JSON: {{"covered": [...], "missing": [...], "score": <float 0.0-1.0>}}"""},
     ]
@@ -37,6 +47,6 @@ Return JSON: {{"covered": [...], "missing": [...], "score": <float 0.0-1.0>}}"""
     try:
         result = flash_json(messages)
         score = max(0.0, min(1.0, float(result.get("score", 0.0))))
-        return score, result.get("missing", REQUIRED_CLAUSES), model_name
+        return score, result.get("missing", required), model_name
     except Exception:
-        return 0.0, REQUIRED_CLAUSES, model_name
+        return 0.0, required, model_name

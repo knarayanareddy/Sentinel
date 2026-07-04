@@ -9,10 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from sentinel import broadcaster, eventbus
 from sentinel.vector_store import init_collection, ingest
-from sentinel.agent import run_agent, TASK_BRIEF
+from sentinel.agent import run_agent, SCENARIOS, TASK_BRIEF
 from sentinel.pipeline import SentinelPipeline
 from sentinel.sequencer import seal_incident
-from sentinel.models import DecisionRequest
+from sentinel.models import DecisionRequest, RunRequest
 from sentinel.orchestrator import get_action, register_tool_executor, resolve_frozen
 from sentinel.tools import send_memo
 
@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI):
     print("[SENTINEL] Initializing Sentinel pipeline...")
     SentinelPipeline(task_brief=TASK_BRIEF)
     register_tool_executor("send_escalation_memo", send_memo.run)
+    register_tool_executor("send_confirmation_memo", send_memo.run)
     print("[SENTINEL] Sentinel pipeline initialized.")
     
     # Wire broadcaster to eventbus for WebSocket streaming
@@ -101,16 +102,31 @@ async def websocket_endpoint(ws: WebSocket):
         print(f"[SENTINEL] WebSocket client disconnected. Total clients: {len(broadcaster._clients)}")
 
 
+@app.get("/api/scenarios")
+async def scenarios():
+    """List the demo scenarios the agent can run."""
+    return {
+        "scenarios": [
+            {"id": key, "label": value["label"]}
+            for key, value in SCENARIOS.items()
+        ]
+    }
+
+
 @app.post("/api/run")
-async def trigger_agent():
+async def trigger_agent(request: RunRequest | None = None):
     """
     Trigger the SENTINEL agent to run the full 7-step loop.
     The agent runs in a background thread and emits events via EventBus.
     """
-    print("[SENTINEL] Agent triggered via /api/run")
-    thread = run_agent()
+    scenario = request.scenario if request else "breach"
+    if scenario not in SCENARIOS:
+        raise HTTPException(status_code=422, detail=f"Unknown scenario: {scenario}")
+    print(f"[SENTINEL] Agent triggered via /api/run (scenario={scenario})")
+    run_agent(scenario)
     return {
         "status": "agent_started",
+        "scenario": scenario,
         "message": "Agent running in background. Monitor events via WebSocket at /ws.",
     }
 
