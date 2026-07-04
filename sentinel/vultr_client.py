@@ -1,6 +1,15 @@
 """
-VultronRetriever client wrapper using OpenAI SDK.
+Vultr Serverless Inference client wrapper using OpenAI SDK.
 All core reasoning calls route through Vultr Serverless Inference.
+
+NOTE: The original design specified VultronRetriever models (Prime/Core/Flash) for reasoning,
+but these are actually ReRank models and don't work with /v1/chat/completions.
+We now use TextGeneration models instead:
+  - Prime/Core: nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16 (planning, reasoning, MAARS)
+  - Flash: deepseek-ai/DeepSeek-V4-Flash (citation checking)
+
+The function names (prime_*, core_*, flash_*) are retained for architectural clarity,
+but they now point to different model IDs in the config.
 """
 import time
 import json

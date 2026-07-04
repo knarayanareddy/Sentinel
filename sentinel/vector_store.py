@@ -8,8 +8,10 @@ CRITICAL SCHEMA NOTES (from Phase -1 testing):
 - Search payload: {"input": "...", "top_k": N}  (NOT "query")
 - Search response: {"results": [{"id": "...", "created": "...", "content": "..."}]}
   (NO description or score fields in results)
+- Collection creation: response schema is NOT {"id": "..."} — must inspect actual response
 """
 import requests
+import json as _json
 from dataclasses import dataclass
 from typing import Optional
 from sentinel.config import CONFIG
@@ -30,17 +32,68 @@ class RetrievedChunk:
 
 
 def init_collection(name: str = "sentinel-finance-docs") -> str:
-    """Create a new vector store collection."""
+    """
+    Create a new vector store collection.
+    
+    The actual response schema from POST /v1/vector_store is not {"id": "..."} —
+    this function inspects the response and extracts the collection ID using
+    tolerant key lookup. It also logs the raw response for debugging.
+    """
     global _collection_id
+    
     r = requests.post(
         f"{_BASE}/vector_store",
         headers=_HEADERS,
         json={"name": name},
         timeout=10,
     )
+    
+    raw_response = r.json()
+    print(f"[VECTOR_STORE] init_collection() raw response ({r.status_code}): {_json.dumps(raw_response, indent=2, default=str)}")
+    
     r.raise_for_status()
-    _collection_id = r.json()["id"]
+    
+    # Tolerant ID extraction — try multiple possible key names
+    possible_keys = ["id", "collection_id", "vector_store_id", "collectionId", "vectorStoreId"]
+    collection_id = None
+    for key in possible_keys:
+        if key in raw_response:
+            collection_id = raw_response[key]
+            print(f"[VECTOR_STORE] Extracted collection_id from key '{key}': {collection_id}")
+            break
+    
+    if collection_id is None:
+        # If response is a dict with a nested structure, try common patterns
+        if isinstance(raw_response, dict):
+            # Check if it's wrapped in a top-level key
+            for wrapper_key in ["collection", "vector_store", "data", "result"]:
+                if wrapper_key in raw_response and isinstance(raw_response[wrapper_key], dict):
+                    for key in possible_keys:
+                        if key in raw_response[wrapper_key]:
+                            collection_id = raw_response[wrapper_key][key]
+                            print(f"[VECTOR_STORE] Extracted collection_id from '{wrapper_key}.{key}': {collection_id}")
+                            break
+                    if collection_id:
+                        break
+    
+    if collection_id is None:
+        print(f"[VECTOR_STORE] FATAL: Could not extract collection ID from response.")
+        print(f"[VECTOR_STORE] Full response keys: {list(raw_response.keys()) if isinstance(raw_response, dict) else type(raw_response)}")
+        raise RuntimeError(
+            f"Could not extract collection ID from response. "
+            f"Response keys: {list(raw_response.keys()) if isinstance(raw_response, dict) else type(raw_response)}. "
+            f"Full response: {raw_response}"
+        )
+    
+    _collection_id = str(collection_id)
     return _collection_id
+
+
+def set_collection_id(collection_id: str):
+    """Manually set the collection ID (useful if you know it from a previous run)."""
+    global _collection_id
+    _collection_id = collection_id
+    print(f"[VECTOR_STORE] Collection ID manually set to: {collection_id}")
 
 
 def ingest(content: str, description: str) -> str:
@@ -54,7 +107,10 @@ def ingest(content: str, description: str) -> str:
         timeout=15,
     )
     r.raise_for_status()
-    return r.json()["id"]
+    raw = r.json()
+    # Tolerant ID extraction for ingested item
+    item_id = raw.get("id", raw.get("item_id", raw.get("itemId", "unknown")))
+    return str(item_id)
 
 
 def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:

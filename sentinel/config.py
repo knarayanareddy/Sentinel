@@ -26,7 +26,7 @@ def load_and_validate():
         "vultron_prime": os.environ["VULTRON_PRIME_MODEL"],
         "vultron_core": os.environ["VULTRON_CORE_MODEL"],
         "vultron_flash": os.environ["VULTRON_FLASH_MODEL"],
-        "secondary_model": os.getenv("SECONDARY_MODEL", "qwen2.5-32b-instruct"),
+        "secondary_model": os.getenv("SECONDARY_MODEL", "deepseek-ai/DeepSeek-V4-Flash"),
         "sentinel_env": env,
         "sandbox_sink": os.getenv("SANDBOX_EMAIL_SINK", "mailhog"),
         "drift_threshold": float(os.getenv("DRIFT_THRESHOLD", "0.40")),
