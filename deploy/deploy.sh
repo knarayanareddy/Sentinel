@@ -44,14 +44,7 @@ if ! command -v python3.11 &> /dev/null; then
 fi
 log_info "Python version: $(python3.11 --version)"
 
-# Step 3: Install Node.js 18+
-log_info "Step 3/8: Installing Node.js 18..."
-if ! command -v node &> /dev/null || ! command -v npm &> /dev/null || [[ $(node --version | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - || true
-    apt-get install -y -qq nodejs npm || true
-fi
-log_info "Node version: $(node --version)"
-log_info "npm version: $(npm --version)"
+
 
 # Step 4: Install nginx
 log_info "Step 4/8: Installing nginx..."
@@ -77,12 +70,7 @@ source /opt/sentinel/venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Step 7: Build frontend
-log_info "Step 7/8: Building frontend..."
-cd frontend
-npm install --production=false
-npm run build
-cd ..
+
 
 # Step 8: Configure services
 log_info "Step 8/8: Configuring services..."
