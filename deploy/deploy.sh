@@ -47,9 +47,9 @@ log_info "Python version: $(python3 --version)"
 
 # Step 3: Install Node.js 18+
 log_info "Step 3/8: Installing Node.js 18..."
-if ! command -v node &> /dev/null || [[ $(node --version | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
+if ! command -v node &> /dev/null || ! command -v npm &> /dev/null || [[ $(node --version | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    apt-get install -y -qq nodejs
+    apt-get install -y -qq nodejs npm
 fi
 log_info "Node version: $(node --version)"
 log_info "npm version: $(npm --version)"
