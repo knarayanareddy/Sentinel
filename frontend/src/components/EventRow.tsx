@@ -9,10 +9,12 @@ import type {
   CitationCheckedPayload,
   ActionProposedPayload,
   ActionExecutedPayload,
+  OperatorDecisionPayload,
   ErrorPayload,
 } from "../types";
 import { ModelBadge } from "./ModelBadge";
 import { RetrievalBadge } from "./RetrievalBadge";
+import { stepForEvent } from "../steps";
 
 interface EventRowProps {
   event: SentinelEvent;
@@ -35,6 +37,7 @@ const EVENT_COLORS: Record<string, string> = {
 
 export function EventRow({ event }: EventRowProps) {
   const color = EVENT_COLORS[event.event_type] ?? "var(--color-text)";
+  const step = stepForEvent(event);
 
   const rowStyle: CSSProperties = {
     display: "flex",
@@ -65,6 +68,16 @@ export function EventRow({ event }: EventRowProps) {
     fontSize: "11px",
     fontFamily: "var(--font-mono)",
     color: "var(--color-text-muted)",
+  };
+
+  const stepChipStyle: CSSProperties = {
+    fontSize: "10px",
+    fontFamily: "var(--font-mono)",
+    color: "var(--color-text-muted)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-sm)",
+    padding: "1px 6px",
+    letterSpacing: "0.05em",
   };
 
   const contentStyle: CSSProperties = {
@@ -204,12 +217,16 @@ export function EventRow({ event }: EventRowProps) {
           </div>
         );
 
-      case "OPERATOR_DECISION":
+      case "OPERATOR_DECISION": {
+        const payload = event.payload as OperatorDecisionPayload;
+        const approved = payload.decision === "approved";
         return (
-          <div style={contentStyle}>
-            Operator made decision
+          <div style={{ ...contentStyle, color: approved ? "var(--color-executed)" : "var(--color-aborted)" }}>
+            Operator {approved ? "approved" : "aborted"} the frozen action
+            {approved ? " — memo dispatched" : " — action cancelled"}
           </div>
         );
+      }
 
       case "ERROR": {
         const payload = event.payload as ErrorPayload;
@@ -228,7 +245,10 @@ export function EventRow({ event }: EventRowProps) {
   return (
     <div style={rowStyle}>
       <div style={headerStyle}>
-        <span style={eventTypeStyle}>{event.event_type}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {step !== null && <span style={stepChipStyle}>STEP {step}/7</span>}
+          <span style={eventTypeStyle}>{event.event_type}</span>
+        </div>
         <span style={timestampStyle}>
           {new Date(event.timestamp * 1000).toLocaleTimeString()}
         </span>
