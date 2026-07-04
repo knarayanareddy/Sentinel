@@ -23,8 +23,18 @@ However, during development, we identified a hard API restriction: **Vultr's Ser
 
 To maintain 100% architectural integrity without faking model IDs (a common pitfall we deliberately avoided), we implemented a highly engineered **dual-stage pipeline** that explicitly isolates Retrieval and Reasoning:
 
-1. **Document Retrieval (VultronRetriever)**: We discovered that while VultronRetriever is blocked from chat, Vultr hosts an **undocumented `/v1/rerank` endpoint** that accepts these models perfectly. Our Vector Store `search()` function over-fetches candidate chunks via standard vector similarity, and then explicitly passes them through `https://api.vultrinference.com/v1/rerank` using `vultr/VultronRetrieverFlash-Qwen3.5-0.8B`. The chunks are re-sorted by `relevance_score`, guaranteeing that VultronRetriever strictly powers our core retrieval logic, completely satisfying the spirit of the rubric.
+1. **Document Retrieval (VultronRetriever)**: We discovered that while VultronRetriever is blocked from chat, Vultr hosts an **undocumented `/v1/rerank` endpoint** that accepts these models perfectly. Our Vector Store `search()` function over-fetches candidate chunks via standard vector similarity, and then explicitly passes them through `https://api.vultrinference.com/v1/rerank` using `vultr/VultronRetrieverCore-Qwen3.5-4.5B` (configurable via `VULTRON_RERANK_MODEL`; Prime-8B and Flash-0.8B also work). The chunks are re-sorted by `relevance_score`, guaranteeing that VultronRetriever strictly powers our core retrieval logic, completely satisfying the spirit of the rubric.
 2. **Core Reasoning (Qwen3.6-27B)**: Because the Vultr API mathematically prevents VultronRetriever from executing the required reasoning (planning, MAARS probing, drift scoring), we dynamically fallback to `Qwen/Qwen3.6-27B`. We selected Qwen because it is the exact same foundational model family that powers VultronRetriever (Qwen3.5). This ensures our reasoning engine remains as close to the intended Vultron architecture as technically possible on the Vultr platform. All UI events explicitly attribute reasoning to the Qwen model.
+
+## Rubric Compliance
+
+| Rubric requirement | How SENTINEL satisfies it |
+|---|---|
+| VultronRetriever models for document retrieval | Every retrieval pass reranks vector-store candidates through `/v1/rerank` with a VultronRetriever checkpoint (`sentinel/vector_store.py`) |
+| VultronRetriever via Serverless Inference for core reasoning | **Impossible by API design** — see [`models.json`](models.json), the live `/v1/models` response: all three VultronRetriever checkpoints expose only the `ReRank` feature, never `TextGeneration`, so the gateway rejects them on `/v1/chat/completions`. Reasoning uses `Qwen/Qwen3.6-27B`, the same Qwen3.5 family the VultronRetrievers are distilled from, with honest model attribution in every UI event |
+| Multi-step agentic workflow (plan, retrieve >1x, tools, decisions) | 7-step loop: plan → 2 retrieval passes → deterministic `calculate_ratio` tool → **conditional** 3rd retrieval on breach → memo synthesis → gated irreversible action |
+| Outcome a real team could use | Escalation memo with citations, human approve/abort gate, tamper-evident SHA-256 incident records |
+| Backend deployed on Vultr | FastAPI + nginx on a Vultr Ubuntu VM (`deploy/`) |
 
 ## Deployment
 

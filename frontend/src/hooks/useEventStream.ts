@@ -27,7 +27,10 @@ export function useEventStream() {
       ws.onmessage = (e) => {
         try {
           const event: SentinelEvent = JSON.parse(e.data);
-          setEvents((prev) => [event, ...prev]);
+          // Server replays buffered history on connect; skip events already seen
+          setEvents((prev) =>
+            prev.some((p) => p.event_id === event.event_id) ? prev : [event, ...prev]
+          );
 
           // Track frozen actions
           if (event.event_type === "ACTION_FROZEN") {
