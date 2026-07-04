@@ -1,5 +1,5 @@
 """
-Citation Completeness Checker — powered by VultronRetrieverFlash (via flash_json).
+Citation Completeness Checker — powered by Qwen (Reasoning Flash) via Vultr Serverless Inference.
 
 Checks whether an action has sufficient documentary evidence across required
 citation categories. Returns (score, missing_clauses, model_used).

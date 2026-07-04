@@ -1,6 +1,6 @@
 """
 Vultr Vector Store integration.
-Manual retrieval pattern: search returns raw chunks, then inject into VultronRetriever chat calls.
+Manual retrieval pattern: Base search fetches chunks, which are then explicitly piped into VultronRetriever via /v1/rerank.
 This is NOT the RAG endpoint — it's a decoupled two-call pattern for explicit reasoning attribution.
 
 CRITICAL SCHEMA NOTES (from Phase -1 testing):

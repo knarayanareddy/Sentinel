@@ -1,5 +1,5 @@
 """
-Covenant Drift Scorer — powered by VultronRetrieverCore (via core_json).
+Covenant Drift Scorer — powered by Qwen (Reasoning Core) via Vultr Serverless Inference.
 
 Evaluates whether a proposed action has drifted from the original task brief.
 Returns (is_drifted, drift_score, model_used).

@@ -1,6 +1,6 @@
 """
 MAARS — Multi-pass Adversarial Action Review System.
-Powered by VultronRetrieverPrime (via prime_json).
+Powered by Qwen (Reasoning Prime) via Vultr Serverless Inference.
 
 Adversarial review of a proposed action before execution. Returns a verdict
 (YES/NO), confidence, reasoning, severity, and remediation.
