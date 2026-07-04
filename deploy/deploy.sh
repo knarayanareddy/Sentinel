@@ -31,32 +31,32 @@ fi
 
 # Step 1: System Updates
 log_info "Step 1/8: Updating system packages..."
-apt-get update -qq
-apt-get upgrade -y -qq
+apt-get update -qq || true
+apt-get upgrade -y -qq || true
 
 # Step 2: Install Python 3.11+
 log_info "Step 2/8: Installing Python 3.11..."
 if ! command -v python3.11 &> /dev/null; then
-    apt-get install -y -qq software-properties-common
-    add-apt-repository -y ppa:deadsnakes/ppa
-    apt-get update -qq
-    apt-get install -y -qq python3.11 python3.11-venv python3.11-dev python3-pip
+    apt-get install -y -qq software-properties-common || true
+    add-apt-repository -y ppa:deadsnakes/ppa || true
+    apt-get update -qq || true
+    apt-get install -y -qq python3.11 python3.11-venv python3.11-dev python3-pip || true
 fi
-log_info "Python version: $(python3 --version)"
+log_info "Python version: $(python3.11 --version)"
 
 # Step 3: Install Node.js 18+
 log_info "Step 3/8: Installing Node.js 18..."
 if ! command -v node &> /dev/null || ! command -v npm &> /dev/null || [[ $(node --version | cut -d'v' -f2 | cut -d'.' -f1) -lt 18 ]]; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    apt-get install -y -qq nodejs npm
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - || true
+    apt-get install -y -qq nodejs npm || true
 fi
 log_info "Node version: $(node --version)"
 log_info "npm version: $(npm --version)"
 
 # Step 4: Install nginx
 log_info "Step 4/8: Installing nginx..."
-apt-get install -y -qq nginx
-systemctl enable nginx
+apt-get install -y -qq nginx || true
+systemctl enable nginx || true
 
 # Step 5: Setup project directory
 log_info "Step 5/8: Setting up project directory..."
