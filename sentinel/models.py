@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Any
+from pydantic import BaseModel
 import uuid
 import time
 
@@ -67,3 +68,9 @@ class SentinelEvent:
     timestamp: float = field(default_factory=time.time)
     payload: Any = None
     action_id: Optional[str] = None
+
+
+class DecisionRequest(BaseModel):
+    """Request model for the /api/decide endpoint."""
+    action_id: str
+    approved: bool

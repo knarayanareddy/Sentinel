@@ -9,6 +9,9 @@ from pathlib import Path
 from sentinel.vector_store import init_collection, ingest
 from sentinel.agent import run_agent, TASK_BRIEF
 from sentinel.pipeline import SentinelPipeline
+from sentinel.sequencer import seal_incident
+from sentinel.models import DecisionRequest
+from sentinel.orchestrator import get_action, resolve_frozen
 
 
 @asynccontextmanager
@@ -63,4 +66,29 @@ async def trigger_agent():
     return {
         "status": "agent_started",
         "message": "Agent running in background. Monitor events via /api/events.",
+    }
+
+
+@app.post("/api/decide")
+async def decide(request: DecisionRequest):
+    """
+    Approve or abort a frozen action.
+    Resolves the action and seals the incident record with SHA-256 hash.
+    """
+    action = get_action(request.action_id)
+    if not action:
+        return {"error": "Action not found"}
+    
+    if action.status.value != "frozen":
+        return {"error": f"Action is not frozen (current status: {action.status.value})"}
+    
+    # Resolve the frozen action
+    resolve_frozen(request.action_id, request.approved)
+    
+    # Seal the incident record
+    report = seal_incident(action)
+    
+    return {
+        "status": action.status.value,
+        "integrity_hash": report["integrity_hash"],
     }
