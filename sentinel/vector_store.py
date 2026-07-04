@@ -150,27 +150,141 @@ def set_collection_id(collection_id: str):
     print(f"[VECTOR_STORE] Collection ID manually set to: {collection_id}")
 
 
-def ingest(content: str, description: str) -> str:
-    """Add a document to the vector store."""
+def _chunk_text(text: str, max_chunk_size: int = 800) -> list[str]:
+    """
+    Split text into chunks suitable for Vultr's embedding model.
+    
+    Strategy:
+    1. Split by double-newlines (paragraph boundaries) for semantic chunks
+    2. Merge small consecutive paragraphs until they'd exceed max_chunk_size
+    3. If a single paragraph exceeds the limit, split by sentences or hard-break
+    
+    Args:
+        text: The full text to chunk
+        max_chunk_size: Maximum characters per chunk (default 800, safe margin below 1000)
+    
+    Returns:
+        List of text chunks
+    """
+    # Handle empty or whitespace-only input
+    if not text or not text.strip():
+        return []
+    
+    if len(text) <= max_chunk_size:
+        return [text]
+    
+    # Split by double-newlines (paragraph boundaries)
+    paragraphs = text.split("\n\n")
+    
+    chunks = []
+    current_chunk = ""
+    
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+        
+        # If adding this paragraph would exceed the limit
+        if len(current_chunk) + len(para) + 2 > max_chunk_size:
+            # Save current chunk if non-empty
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = ""
+            
+            # If single paragraph exceeds limit, split it further
+            if len(para) > max_chunk_size:
+                # Try splitting by sentences (period + space)
+                sentences = para.replace(". ", ".|").split("|")
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+                    
+                    if len(current_chunk) + len(sentence) + 1 > max_chunk_size:
+                        if current_chunk:
+                            chunks.append(current_chunk.strip())
+                            current_chunk = ""
+                        
+                        # If single sentence still too long, hard-break
+                        if len(sentence) > max_chunk_size:
+                            for i in range(0, len(sentence), max_chunk_size):
+                                chunks.append(sentence[i:i+max_chunk_size].strip())
+                        else:
+                            current_chunk = sentence
+                    else:
+                        if current_chunk:
+                            current_chunk += " " + sentence
+                        else:
+                            current_chunk = sentence
+            else:
+                current_chunk = para
+        else:
+            # Add paragraph to current chunk
+            if current_chunk:
+                current_chunk += "\n\n" + para
+            else:
+                current_chunk = para
+    
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    
+    # Filter out empty chunks
+    chunks = [c for c in chunks if c]
+    
+    return chunks
+
+
+def ingest(content: str, description: str) -> list[str]:
+    """
+    Add a document to the vector store, automatically chunking if needed.
+    
+    Vultr's embedding model has a context window limit (~1000 chars).
+    This function splits large documents into semantic chunks (by paragraphs)
+    and ingests each chunk separately.
+    
+    Args:
+        content: The full document text
+        description: Document identifier (e.g., filename)
+    
+    Returns:
+        List of ingested item IDs (one per chunk)
+    """
     if not _collection_id:
         raise RuntimeError("Call init_collection() first.")
-    r = requests.post(
-        f"{_BASE}/vector_store/{_collection_id}/items",
-        headers=_HEADERS,
-        json={"content": content, "description": description},
-        timeout=15,
-    )
     
-    # Handle duplicate items gracefully (e.g., on server restart)
-    if r.status_code == 422:
-        print(f"[VECTOR_STORE] Item '{description}' may already exist, skipping.")
-        return "duplicate"
+    # Chunk the content
+    chunks = _chunk_text(content, max_chunk_size=800)
     
-    r.raise_for_status()
-    raw = r.json()
-    # Tolerant ID extraction for ingested item
-    item_id = raw.get("id", raw.get("item_id", raw.get("itemId", "unknown")))
-    return str(item_id)
+    print(f"[VECTOR_STORE] Splitting '{description}' into {len(chunks)} chunk(s)")
+    
+    ingested_ids = []
+    for i, chunk in enumerate(chunks, 1):
+        chunk_description = f"{description}:chunk_{i}" if len(chunks) > 1 else description
+        
+        r = requests.post(
+            f"{_BASE}/vector_store/{_collection_id}/items",
+            headers=_HEADERS,
+            json={"content": chunk, "description": chunk_description},
+            timeout=15,
+        )
+        
+        # Print actual error on 422 instead of silently swallowing
+        if r.status_code == 422:
+            error_response = r.json()
+            print(f"[VECTOR_STORE] ERROR ingesting chunk {i}: {error_response}")
+            print(f"[VECTOR_STORE] Chunk content preview: {chunk[:200]}...")
+            print(f"[VECTOR_STORE] Chunk length: {len(chunk)} chars")
+            r.raise_for_status()
+        
+        r.raise_for_status()
+        raw = r.json()
+        # Tolerant ID extraction for ingested item
+        item_id = raw.get("id", raw.get("item_id", raw.get("itemId", "unknown")))
+        ingested_ids.append(str(item_id))
+        print(f"[VECTOR_STORE] Ingested chunk {i}/{len(chunks)}: {chunk_description} (id: {item_id})")
+    
+    return ingested_ids
 
 
 def search(query: str, top_k: int = 3) -> list[RetrievedChunk]:
