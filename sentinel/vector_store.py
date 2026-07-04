@@ -31,13 +31,62 @@ class RetrievedChunk:
     score: float = 0.0
 
 
+def _get_existing_collection(name: str) -> str:
+    """
+    Find an existing collection by name and extract its ID.
+    Used when init_collection() encounters a 422 Duplicate error.
+    """
+    global _collection_id
+    
+    print(f"[VECTOR_STORE] Querying existing collections...")
+    r = requests.get(
+        f"{_BASE}/vector_store",
+        headers=_HEADERS,
+        timeout=10,
+    )
+    r.raise_for_status()
+    
+    raw_response = r.json()
+    print(f"[VECTOR_STORE] GET /v1/vector_store response: {_json.dumps(raw_response, indent=2, default=str)}")
+    
+    # The response format is likely {"collections": [...]} or just a list
+    collections = raw_response.get("collections", raw_response.get("data", []))
+    
+    if not isinstance(collections, list):
+        # Maybe the response is just a list directly
+        if isinstance(raw_response, list):
+            collections = raw_response
+        else:
+            raise RuntimeError(
+                f"Could not parse collections list from response. "
+                f"Response: {raw_response}"
+            )
+    
+    # Find the collection with matching name
+    for coll in collections:
+        if coll.get("name") == name:
+            collection_id = coll.get("id")
+            if collection_id:
+                print(f"[VECTOR_STORE] Found existing collection '{name}' with ID: {collection_id}")
+                _collection_id = str(collection_id)
+                return _collection_id
+    
+    # Collection not found in list
+    raise RuntimeError(
+        f"Collection '{name}' not found in existing collections. "
+        f"Available collections: {[c.get('name') for c in collections]}"
+    )
+
+
 def init_collection(name: str = "sentinel-finance-docs") -> str:
     """
     Create a new vector store collection.
     
-    The actual response schema from POST /v1/vector_store is not {"id": "..."} —
-    this function inspects the response and extracts the collection ID using
-    tolerant key lookup. It also logs the raw response for debugging.
+    The actual response schema from POST /v1/vector_store is:
+    {"collection": {"id": "...", "name": "...", "created": "..."}}
+    
+    If the collection already exists (422 Duplicate), it will reuse the existing
+    collection by querying GET /v1/vector_store and finding the matching name.
     """
     global _collection_id
     
@@ -50,6 +99,11 @@ def init_collection(name: str = "sentinel-finance-docs") -> str:
     
     raw_response = r.json()
     print(f"[VECTOR_STORE] init_collection() raw response ({r.status_code}): {_json.dumps(raw_response, indent=2, default=str)}")
+    
+    # Handle duplicate collection name
+    if r.status_code == 422 and "Duplicate collection name" in str(raw_response):
+        print(f"[VECTOR_STORE] Collection '{name}' already exists. Reusing existing collection.")
+        return _get_existing_collection(name)
     
     r.raise_for_status()
     
@@ -106,6 +160,12 @@ def ingest(content: str, description: str) -> str:
         json={"content": content, "description": description},
         timeout=15,
     )
+    
+    # Handle duplicate items gracefully (e.g., on server restart)
+    if r.status_code == 422:
+        print(f"[VECTOR_STORE] Item '{description}' may already exist, skipping.")
+        return "duplicate"
+    
     r.raise_for_status()
     raw = r.json()
     # Tolerant ID extraction for ingested item
