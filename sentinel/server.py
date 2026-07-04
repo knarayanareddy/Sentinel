@@ -1,11 +1,13 @@
 """
 FastAPI server for SENTINEL.
-Phase 3: Vector store initialization, health endpoint, and agent trigger.
+Phase 5: WebSocket broadcasting + all previous phases.
 """
+import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from sentinel import broadcaster, eventbus
 from sentinel.vector_store import init_collection, ingest
 from sentinel.agent import run_agent, TASK_BRIEF
 from sentinel.pipeline import SentinelPipeline
@@ -17,7 +19,8 @@ from sentinel.orchestrator import get_action, resolve_frozen
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    On startup: initialize the vector store, ingest documents, and set up the Sentinel pipeline.
+    On startup: initialize the vector store, ingest documents, set up the Sentinel pipeline,
+    and wire the broadcaster to the eventbus for real-time WebSocket streaming.
     """
     print("[SENTINEL] Initializing vector store...")
     init_collection()
@@ -37,6 +40,12 @@ async def lifespan(app: FastAPI):
     SentinelPipeline(task_brief=TASK_BRIEF)
     print("[SENTINEL] Sentinel pipeline initialized.")
     
+    # Wire broadcaster to eventbus for WebSocket streaming
+    loop = asyncio.get_event_loop()
+    broadcaster.set_event_loop(loop)
+    eventbus.subscribe_all(broadcaster.broadcast)
+    print("[SENTINEL] WebSocket broadcaster wired to eventbus.")
+    
     yield
 
 
@@ -53,6 +62,24 @@ app.add_middleware(
 async def health():
     """Health check endpoint for deployment verification."""
     return {"status": "ok"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(ws: WebSocket):
+    """
+    WebSocket endpoint for real-time event streaming.
+    Clients receive all SentinelEvents as JSON messages.
+    """
+    await ws.accept()
+    broadcaster.register_client(ws)
+    print(f"[SENTINEL] WebSocket client connected. Total clients: {len(broadcaster._clients)}")
+    try:
+        while True:
+            # Keep connection alive, receive any messages from client (optional)
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        broadcaster.unregister_client(ws)
+        print(f"[SENTINEL] WebSocket client disconnected. Total clients: {len(broadcaster._clients)}")
 
 
 @app.post("/api/run")
