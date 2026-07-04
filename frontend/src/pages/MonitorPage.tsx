@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { SentinelEvent } from "../types";
 import { EventRow } from "../components/EventRow";
 import { FreezeAlert } from "../components/FreezeAlert";
 import { StepRail } from "../components/StepRail";
+import { DocumentDrawer } from "../components/DocumentDrawer";
+import { useCorpus } from "../hooks/useCorpus";
 import type { ActionFrozenPayload } from "../types";
 
 interface MonitorPageProps {
@@ -20,6 +22,8 @@ export function MonitorPage({
 }: MonitorPageProps) {
   const streamRef = useRef<HTMLDivElement>(null);
   const chronological = useMemo(() => [...events].reverse(), [events]);
+  const corpus = useCorpus();
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
 
   useEffect(() => {
     const el = streamRef.current;
@@ -75,6 +79,31 @@ export function MonitorPage({
     padding: "2px",
   };
 
+  const corpusBarStyle: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "11px",
+    fontFamily: "var(--font-mono)",
+    color: "var(--color-text-muted)",
+  };
+
+  const corpusLabelStyle: CSSProperties = {
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+  };
+
+  const docChipStyle: CSSProperties = {
+    padding: "3px 8px",
+    background: "var(--color-surface)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "var(--radius-sm)",
+    color: "#81C784",
+    fontFamily: "var(--font-mono)",
+    fontSize: "11px",
+    cursor: "pointer",
+  };
+
   const emptyStyle: CSSProperties = {
     display: "flex",
     justifyContent: "center",
@@ -92,6 +121,22 @@ export function MonitorPage({
           ▶ Run Agent
         </button>
       </div>
+
+      {corpus.length > 0 && (
+        <div style={corpusBarStyle}>
+          <span style={corpusLabelStyle}>Corpus · {corpus.length} docs</span>
+          {corpus.map((doc) => (
+            <button
+              key={doc.name}
+              style={docChipStyle}
+              onClick={() => setOpenDoc(doc.name)}
+              title={`Open ${doc.name}`}
+            >
+              {doc.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {frozenAction && (
         <FreezeAlert
@@ -112,6 +157,10 @@ export function MonitorPage({
           )}
         </div>
       </div>
+
+      {openDoc && (
+        <DocumentDrawer documentName={openDoc} onClose={() => setOpenDoc(null)} />
+      )}
     </div>
   );
 }
