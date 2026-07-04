@@ -1,0 +1,59 @@
+:root {
+  --color-bg: #0D0D0D;
+  --color-surface: #161616;
+  --color-border: rgba(242, 240, 235, 0.12);
+  --color-text: #F2F0EB;
+  --color-text-muted: #8A8880;
+
+  --color-frozen: #E53935;
+  --color-executed: #2E7D32;
+  --color-pending: #F9A825;
+  --color-aborted: #546E7A;
+  --color-resumed: #1565C0;
+
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --radius-sm: 2px;
+  --radius-md: 4px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+a {
+  color: var(--color-text);
+  text-decoration: none;
+}
