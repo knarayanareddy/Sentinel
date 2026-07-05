@@ -8,6 +8,7 @@ and hard-blocks them from /v1/chat/completions.
 To maintain architectural compliance, we explicitly use VultronRetriever for Document ReRanking (in vector_store.py)
 and use a Qwen chat model from the exact same family (Qwen/Qwen3.6-27B) for reasoning.
 """
+import re
 import time
 import json
 from openai import OpenAI, APITimeoutError
@@ -52,6 +53,38 @@ def _chat(model: str, messages: list, json_mode: bool = False,
             raise ValueError(f"Vultr chat call failed [{model}]: {e}") from e
 
 
+def _parse_json(raw: str) -> dict:
+    """
+    Extract a JSON object from a model response. Reasoning models often wrap
+    the JSON in <think> blocks, markdown fences, or prose, so try progressively:
+    direct parse, then strip think-blocks/fences, then scan for the first
+    decodable JSON object in the text.
+    """
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        pass
+
+    cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
+    fence = re.search(r"```(?:json)?\s*(.*?)```", cleaned, flags=re.DOTALL)
+    if fence:
+        cleaned = fence.group(1)
+    try:
+        return json.loads(cleaned.strip())
+    except json.JSONDecodeError:
+        pass
+
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", cleaned):
+        try:
+            obj, _ = decoder.raw_decode(cleaned, match.start())
+            if isinstance(obj, dict):
+                return obj
+        except json.JSONDecodeError:
+            continue
+    raise ValueError(f"No JSON object found in model response: {raw[:200]!r}")
+
+
 # ── Reasoning Prime: planning, retrieval-context reasoning, MAARS, memo drafting ──
 
 def prime_text(messages: list, temperature: float = 0.3, max_tokens: int = 2048) -> str:
@@ -62,7 +95,7 @@ def prime_text(messages: list, temperature: float = 0.3, max_tokens: int = 2048)
 def prime_json(messages: list) -> dict:
     """Prime model for structured JSON output (MAARS probe)."""
     raw = _chat(CONFIG["reasoning_prime"], messages, json_mode=True, temperature=0.1, max_tokens=1024)
-    return json.loads(raw)
+    return _parse_json(raw)
 
 
 # ── Reasoning Core: drift scoring ──
@@ -70,7 +103,7 @@ def prime_json(messages: list) -> dict:
 def core_json(messages: list) -> dict:
     """Core model for structured JSON output (drift scoring)."""
     raw = _chat(CONFIG["reasoning_core"], messages, json_mode=True, temperature=0.1, max_tokens=512)
-    return json.loads(raw)
+    return _parse_json(raw)
 
 
 # ── Reasoning Flash: citation completeness, lightweight checks ──
@@ -78,7 +111,7 @@ def core_json(messages: list) -> dict:
 def flash_json(messages: list) -> dict:
     """Flash model for structured JSON output (citation checking)."""
     raw = _chat(CONFIG["reasoning_flash"], messages, json_mode=True, temperature=0.1, max_tokens=512)
-    return json.loads(raw)
+    return _parse_json(raw)
 
 
 # ── Secondary model: explicitly non-core tasks only (optional UI polish) ──
