@@ -229,17 +229,17 @@ def _agent_loop(scenario: str = "breach"):
             RetrievalCitation(
                 "credit_agreement.md",
                 "§4.2 Debt/EBITDA Covenant",
-                r1[:80],
+                r1[:300],
             ),
             RetrievalCitation(
                 "historical_ratios.md",
                 "Q1–Q8 Trend",
-                r2[:80],
+                r2[:300],
             ),
             RetrievalCitation(
                 "recent_transactions.md",
                 "Q2 Transaction Anomalies",
-                r3[:80] if r3 else "(not retrieved — no breach)",
+                r3[:300] if r3 else "(not retrieved — no breach)",
             ),
         ],
     )
@@ -260,6 +260,7 @@ def _agent_loop(scenario: str = "breach"):
             tool_name="send_escalation_memo",
             parameters={
                 "recipient": "cfo@example.com",
+                "ratio": ratio_result["ratio"],
                 "memo": memo_text[:100],
             },
             is_irreversible=True,
@@ -267,7 +268,7 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "credit_agreement.md",
                     "covenant_definition",
-                    r1[:80],
+                    r1[:300],
                 ),
                 RetrievalCitation(
                     "credit_agreement.md",
@@ -278,12 +279,12 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "historical_ratios.md",
                     "historical_trend",
-                    r2[:80],
+                    r2[:300],
                 ),
                 RetrievalCitation(
                     "recent_transactions.md",
                     "transaction_evidence",
-                    r3[:80],
+                    r3[:300],
                 ),
             ],
         )
@@ -300,6 +301,7 @@ def _agent_loop(scenario: str = "breach"):
             tool_name="send_confirmation_memo",
             parameters={
                 "recipient": "compliance@example.com",
+                "ratio": ratio_result["ratio"],
                 "memo": memo_text,
             },
             is_irreversible=True,
@@ -307,7 +309,7 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "credit_agreement.md",
                     "covenant_definition",
-                    r1[:80],
+                    r1[:300],
                 ),
                 RetrievalCitation(
                     "credit_agreement.md",
@@ -318,7 +320,7 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "historical_ratios.md",
                     "historical_trend",
-                    r2[:80],
+                    r2[:300],
                 ),
             ],
         )

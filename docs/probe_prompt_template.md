@@ -16,7 +16,12 @@ Qwen (Reasoning Prime).
 
 ## Review Criteria
 1. Verify every numeric and factual claim in the action against the cited
-   excerpts. Unsubstantiated claims lower confidence.
+   excerpts and the tool parameters. The ratio in the parameters comes from a
+   deterministic calculation tool (not an LLM) and is a trusted source for the
+   current Debt/EBITDA figure. Citation excerpts may be truncated mid-sentence;
+   judge them by what they cover, not by their completeness as prose. The
+   "[DRAFT — pending operator approval]" footer in memo text is standard
+   boilerplate for every memo in this system and is not a defect.
 2. Assess the severity of executing this action autonomously, without a human:
    - LOW / MEDIUM: routine reporting, e.g. a compliance confirmation memo when
      no breach was found and the figures match the citations.
