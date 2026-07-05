@@ -76,15 +76,15 @@ export function FreezeAlert({ payload, onClick }: FreezeAlertProps) {
       <div style={metricsStyle}>
         <div>
           <span style={metricLabelStyle}>Drift:</span>
-          <span style={metricValueStyle}>{payload.drift_score.toFixed(2)}</span>
+          <span style={metricValueStyle}>{(payload.drift_score ?? 0).toFixed(2)}</span>
         </div>
         <div>
           <span style={metricLabelStyle}>MAARS:</span>
-          <span style={metricValueStyle}>{payload.maars_verdict}</span>
+          <span style={metricValueStyle}>{payload.maars_verdict ?? "—"}</span>
         </div>
         <div>
           <span style={metricLabelStyle}>Citation:</span>
-          <span style={metricValueStyle}>{payload.citation_score.toFixed(2)}</span>
+          <span style={metricValueStyle}>{(payload.citation_score ?? 0).toFixed(2)}</span>
         </div>
       </div>
     </div>

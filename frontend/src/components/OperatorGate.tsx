@@ -169,9 +169,9 @@ export function OperatorGate({
     }
   };
 
-  const drifted = frozenPayload.drift_score >= 0.4;
+  const drifted = (frozenPayload.drift_score ?? 0) >= 0.4;
   const maarsTriggered = frozenPayload.maars_verdict === "NO";
-  const citationLow = frozenPayload.citation_score < 0.6;
+  const citationLow = (frozenPayload.citation_score ?? 0) < 0.6;
 
   return (
     <div style={containerStyle}>
@@ -198,17 +198,17 @@ export function OperatorGate({
       <div style={signalsRowStyle}>
         <div style={signalChipStyle(drifted)}>
           <span style={signalLabelStyle}>Drift Score</span>
-          <span style={signalValueStyle(drifted)}>{frozenPayload.drift_score.toFixed(2)}</span>
+          <span style={signalValueStyle(drifted)}>{(frozenPayload.drift_score ?? 0).toFixed(2)}</span>
         </div>
         <div style={signalChipStyle(maarsTriggered)}>
           <span style={signalLabelStyle}>MAARS Verdict</span>
           <span style={signalValueStyle(maarsTriggered)}>
-            {frozenPayload.maars_verdict} ({frozenPayload.maars_confidence}%)
+            {frozenPayload.maars_verdict ?? "—"} ({frozenPayload.maars_confidence ?? 0}%)
           </span>
         </div>
         <div style={signalChipStyle(citationLow)}>
           <span style={signalLabelStyle}>Citation Score</span>
-          <span style={signalValueStyle(citationLow)}>{frozenPayload.citation_score.toFixed(2)}</span>
+          <span style={signalValueStyle(citationLow)}>{(frozenPayload.citation_score ?? 0).toFixed(2)}</span>
         </div>
       </div>
 

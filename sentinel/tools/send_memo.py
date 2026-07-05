@@ -1,7 +1,7 @@
 import os
 
 
-def run(recipient: str, memo: str) -> dict:
+def run(recipient: str, memo: str, **context) -> dict:
     env = os.getenv("SENTINEL_ENV", "demo")
     sink = os.getenv("SANDBOX_EMAIL_SINK")
     if env == "demo":
