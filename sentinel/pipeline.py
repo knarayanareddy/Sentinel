@@ -80,10 +80,7 @@ class SentinelPipeline:
                 payload=verdict,
             )
         )
-        if (
-            verdict["verdict"] == "NO"
-            and verdict["confidence"] >= CONFIG["maars_confidence_min"]
-        ):
+        if verdict["verdict"] != "YES":
             triggers.append(
                 f"MAARS verdict=NO confidence={verdict['confidence']}"
             )

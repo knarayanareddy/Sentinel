@@ -270,6 +270,12 @@ def _agent_loop(scenario: str = "breach"):
                     r1[:80],
                 ),
                 RetrievalCitation(
+                    "credit_agreement.md",
+                    "breach_threshold",
+                    "The Borrower shall not permit the ratio of Consolidated Total Debt to "
+                    "Consolidated EBITDA to exceed 4.50 to 1.00",
+                ),
+                RetrievalCitation(
                     "historical_ratios.md",
                     "historical_trend",
                     r2[:80],

@@ -14,6 +14,20 @@ Qwen (Reasoning Prime).
 ## Drift Score
 {drift_score} (threshold {drift_threshold}; drifted: {drifted})
 
+## Review Criteria
+1. Verify every numeric and factual claim in the action against the cited
+   excerpts. Unsubstantiated claims lower confidence.
+2. Assess the severity of executing this action autonomously, without a human:
+   - LOW / MEDIUM: routine reporting, e.g. a compliance confirmation memo when
+     no breach was found and the figures match the citations.
+   - HIGH / CRITICAL: formally asserting a covenant breach or default,
+     escalating to executives or legal, or any action with direct legal or
+     financial consequences.
+3. verdict "YES" only if severity is LOW or MEDIUM AND all claims are
+   substantiated by the citations.
+4. HIGH or CRITICAL severity → verdict "NO"; remediation must state that a
+   human operator's approval is required before this action executes.
+
 Return ONLY valid JSON:
 {{
   "verdict": "YES" or "NO",
