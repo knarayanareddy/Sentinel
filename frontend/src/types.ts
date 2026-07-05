@@ -1,4 +1,5 @@
 export type EventType =
+  | "RUN_STARTED"
   | "AGENT_PLAN"
   | "ACTION_PROPOSED"
   | "RETRIEVAL_PASS"
@@ -26,6 +27,11 @@ export interface Citation {
   excerpt: string;
   retrieval_score?: number;
 }
+
+export type RunStartedPayload = {
+  scenario: string;
+  label: string;
+};
 
 export type AgentPlanPayload = {
   steps: string[];

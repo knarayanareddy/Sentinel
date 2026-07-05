@@ -15,6 +15,7 @@ class ActionStatus(str, Enum):
 
 
 class EventType(str, Enum):
+    RUN_STARTED = "RUN_STARTED"
     AGENT_PLAN = "AGENT_PLAN"
     ACTION_PROPOSED = "ACTION_PROPOSED"
     RETRIEVAL_PASS = "RETRIEVAL_PASS"
