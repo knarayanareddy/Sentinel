@@ -4,6 +4,12 @@
 
 **🔴 Live demo:** [http://78.141.222.154/](http://78.141.222.154/) — pick a scenario (breach or compliant) and click *Run Agent*.
 
+| Breach quarter — gate **freezes** the escalation memo | Compliant quarter — all signals pass, memo **executes** |
+|---|---|
+| ![Operator Gate holding a frozen escalation memo with signal breakdown and evidence citations](docs/assets/gate-breach-frozen.png) | ![Signal breakdown: drift 0.00, MAARS YES 95%, citations 1.00](docs/assets/signals-all-pass.png) |
+
+![Live Monitor streaming the 7-step agent loop, ending in autonomous execution](docs/assets/monitor-compliant-executed.png)
+
 ## Architecture & Data Flow
 
 1. **Agent Planning**: The agent plans a multi-step investigation based on an escalation trigger.
@@ -21,7 +27,7 @@
 
 ```mermaid
 flowchart TD
-    T[Escalation trigger] --> P["1 · Plan investigation<br/>(Qwen3.6-27B)"]
+    T[Escalation trigger] --> P["1 · Plan investigation<br/>(Vultr chat model)"]
     P --> R1["2 · Retrieval pass 1<br/>covenant definition"]
     R1 --> R2["3 · Retrieval pass 2<br/>historical ratio trend"]
     R2 --> C["4 · Tool call: calculate_ratio<br/>(deterministic math)"]
@@ -72,27 +78,27 @@ The hackathon rubric strictly dictates: *"Use VultronRetriever models via Server
 
 However, during development, we identified a hard API restriction: **Vultr's Serverless Inference API physically restricts the `VultronRetriever` checkpoints (e.g., `vultr/VultronRetrieverFlash-Qwen3.5-0.8B`) from generating chat completions**. Any attempt to use them on `/v1/chat/completions` for reasoning is blocked at the gateway. 
 
-To maintain 100% architectural integrity without faking model IDs (a common pitfall we deliberately avoided), we implemented a highly engineered **dual-stage pipeline** that explicitly isolates Retrieval and Reasoning:
+Rather than faking model attribution, we built a **dual-stage pipeline** that isolates Retrieval and Reasoning:
 
-1. **Document Retrieval (VultronRetriever)**: We discovered that while VultronRetriever is blocked from chat, Vultr hosts an **undocumented `/v1/rerank` endpoint** that accepts these models perfectly. Our Vector Store `search()` function over-fetches candidate chunks via standard vector similarity, and then explicitly passes them through `https://api.vultrinference.com/v1/rerank` using `vultr/VultronRetrieverCore-Qwen3.5-4.5B` (configurable via `VULTRON_RERANK_MODEL`; Prime-8B and Flash-0.8B also work). The chunks are re-sorted by `relevance_score`, guaranteeing that VultronRetriever strictly powers our core retrieval logic, completely satisfying the spirit of the rubric.
+1. **Document Retrieval (VultronRetriever)**: While VultronRetriever is blocked from chat, Vultr hosts an **undocumented `/v1/rerank` endpoint** that accepts these models. Our Vector Store `search()` over-fetches candidate chunks via vector similarity, then passes them through `https://api.vultrinference.com/v1/rerank` using `vultr/VultronRetrieverCore-Qwen3.5-4.5B` (configurable via `VULTRON_RERANK_MODEL`; Prime-8B and Flash-0.8B also work). Chunks are re-sorted by `relevance_score`, so VultronRetriever powers every retrieval pass — the closest technically possible reading of the rubric.
 
 ```mermaid
 flowchart LR
     Q[Agent query] --> VS["Vultr Vector Store<br/>over-fetch top-k candidates"]
     VS --> RR["/v1/rerank<br/>VultronRetrieverCore-Qwen3.5-4.5B"]
     RR --> TOP["Top chunks by relevance_score"]
-    TOP --> LLM["/v1/chat/completions<br/>Qwen/Qwen3.6-27B (reasoning)"]
+    TOP --> LLM["/v1/chat/completions<br/>Vultr chat model (reasoning)"]
     LLM --> OUT["Grounded step output + citations"]
 ```
 
-2. **Core Reasoning (Qwen3.6-27B)**: Because the Vultr API mathematically prevents VultronRetriever from executing the required reasoning (planning, MAARS probing, drift scoring), we dynamically fallback to `Qwen/Qwen3.6-27B`. We selected Qwen because it is the exact same foundational model family that powers VultronRetriever (Qwen3.5). This ensures our reasoning engine remains as close to the intended Vultron architecture as technically possible on the Vultr platform. All UI events explicitly attribute reasoning to the Qwen model.
+2. **Core Reasoning (configurable Vultr chat models)**: Because the API blocks VultronRetriever from the reasoning steps (planning, MAARS probing, drift scoring), those run on Vultr-hosted chat models selected via the `REASONING_PRIME/CORE/FLASH_MODEL` env vars — `Qwen/Qwen3.6-27B` by default (the same Qwen3.5 family the VultronRetrievers derive from), with `deepseek-ai/DeepSeek-V4-Flash` as a lower-latency alternative used in the live demo. Every UI event honestly attributes which model produced it.
 
 ## Rubric Compliance
 
 | Rubric requirement | How SENTINEL satisfies it |
 |---|---|
 | VultronRetriever models for document retrieval | Every retrieval pass reranks vector-store candidates through `/v1/rerank` with a VultronRetriever checkpoint (`sentinel/vector_store.py`) |
-| VultronRetriever via Serverless Inference for core reasoning | **Impossible by API design** — see [`models.json`](models.json), the live `/v1/models` response: all three VultronRetriever checkpoints expose only the `ReRank` feature, never `TextGeneration`, so the gateway rejects them on `/v1/chat/completions`. Reasoning uses `Qwen/Qwen3.6-27B`, the same Qwen3.5 family the VultronRetrievers are distilled from, with honest model attribution in every UI event |
+| VultronRetriever via Serverless Inference for core reasoning | **Impossible by API design** — see [`models.json`](models.json), the live `/v1/models` response: all three VultronRetriever checkpoints expose only the `ReRank` feature, never `TextGeneration`, so the gateway rejects them on `/v1/chat/completions`. Reasoning uses Vultr-hosted chat models (Qwen3.6-27B / DeepSeek-V4-Flash, env-configurable), with honest model attribution in every UI event |
 | Multi-step agentic workflow (plan, retrieve >1x, tools, decisions) | 7-step loop: plan → 2 retrieval passes → deterministic `calculate_ratio` tool → **conditional** 3rd retrieval on breach → memo synthesis → gated irreversible action |
 | Outcome a real team could use | Escalation memo with citations, human approve/abort gate, tamper-evident SHA-256 incident records |
 | Backend deployed on Vultr | FastAPI + nginx on a Vultr Ubuntu VM (`deploy/`) |
