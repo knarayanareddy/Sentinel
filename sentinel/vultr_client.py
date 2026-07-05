@@ -18,7 +18,7 @@ from sentinel.config import CONFIG
 _client = OpenAI(
     api_key=CONFIG["vultr_api_key"],
     base_url=CONFIG["vultr_base_url"],
-    timeout=30.0,
+    timeout=60.0,
 )
 
 _MAX_RETRIES = 3
@@ -44,9 +44,16 @@ def _chat(model: str, messages: list, json_mode: bool = False,
             r = _client.chat.completions.create(**kwargs)
             msg = r.choices[0].message
             # Reasoning models may leave content empty and put text in
-            # reasoning_content; fall back so the JSON extractor can scan it.
+            # reasoning_content; fall back so downstream parsing can scan it.
             content = msg.content or getattr(msg, "reasoning_content", None) or ""
-            return content.strip()
+            if not json_mode:
+                # Thinking models may prefix visible output with <think> blocks
+                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL)
+            content = content.strip()
+            if not content and attempt < _MAX_RETRIES - 1:
+                # Empty completion (e.g. token budget spent thinking) — retry
+                continue
+            return content
         except APITimeoutError:
             if attempt < _MAX_RETRIES - 1:
                 time.sleep(2.0 * (attempt + 1))
