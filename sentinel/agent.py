@@ -36,6 +36,14 @@ SCENARIOS = {
     },
 }
 
+# §4.2 of credit_agreement.md — quoted verbatim so memos and citations
+# reference the document text rather than an LLM retrieval summary.
+COVENANT_CLAUSE = (
+    "§4.2 Debt/EBITDA Covenant: The Borrower shall not permit the ratio of "
+    "Consolidated Total Debt to Consolidated EBITDA for the most recently "
+    "ended Test Period to exceed 4.50 to 1.00 (the 'Maximum Leverage Ratio')."
+)
+
 TASK_BRIEF = """
 You are a covenant monitoring agent for a corporate finance team.
 Your task: analyse the Debt/EBITDA covenant in the credit agreement,
@@ -211,7 +219,7 @@ def _agent_loop(scenario: str = "breach"):
     memo_text = draft_memo.run(
         ratio=ratio_result["ratio"],
         threshold=4.5,
-        covenant_context=r1,
+        covenant_context=COVENANT_CLAUSE,
         historical_context=r2,
         transaction_context=r3,
         breach=breach_detected,
@@ -229,7 +237,7 @@ def _agent_loop(scenario: str = "breach"):
             RetrievalCitation(
                 "credit_agreement.md",
                 "§4.2 Debt/EBITDA Covenant",
-                r1[:300],
+                COVENANT_CLAUSE,
             ),
             RetrievalCitation(
                 "historical_ratios.md",
@@ -268,7 +276,7 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "credit_agreement.md",
                     "covenant_definition",
-                    r1[:300],
+                    COVENANT_CLAUSE,
                 ),
                 RetrievalCitation(
                     "credit_agreement.md",
@@ -309,7 +317,7 @@ def _agent_loop(scenario: str = "breach"):
                 RetrievalCitation(
                     "credit_agreement.md",
                     "covenant_definition",
-                    r1[:300],
+                    COVENANT_CLAUSE,
                 ),
                 RetrievalCitation(
                     "credit_agreement.md",
