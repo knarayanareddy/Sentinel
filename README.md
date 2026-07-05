@@ -2,6 +2,8 @@
 
 **SENTINEL** is an autonomous, fail-closed financial oversight agent built for the Vultr Cloud Hackathon. It investigates complex corporate documents (e.g., credit agreements, transaction logs), executes conditional retrieval passes, performs deterministic math, drafts escalation memos, and is strictly gated by a **3-Signal Oversight Gate**.
 
+**🔴 Live demo:** [http://78.141.222.154/](http://78.141.222.154/) — pick a scenario (breach or compliant) and click *Run Agent*.
+
 ## Architecture & Data Flow
 
 1. **Agent Planning**: The agent plans a multi-step investigation based on an escalation trigger.
