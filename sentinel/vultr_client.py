@@ -42,15 +42,22 @@ def _chat(model: str, messages: list, json_mode: bool = False,
     for attempt in range(_MAX_RETRIES):
         try:
             r = _client.chat.completions.create(**kwargs)
-            return r.choices[0].message.content.strip()
+            msg = r.choices[0].message
+            # Reasoning models may leave content empty and put text in
+            # reasoning_content; fall back so the JSON extractor can scan it.
+            content = msg.content or getattr(msg, "reasoning_content", None) or ""
+            return content.strip()
         except APITimeoutError:
             if attempt < _MAX_RETRIES - 1:
                 time.sleep(2.0 * (attempt + 1))
                 continue
             raise
         except Exception as e:
-            # If json_mode fails, it may be unsupported — let caller handle
+            # Some models reject response_format — retry once without it
+            if json_mode and kwargs.pop("response_format", None) is not None:
+                continue
             raise ValueError(f"Vultr chat call failed [{model}]: {e}") from e
+    raise ValueError(f"Vultr chat call failed [{model}]: retries exhausted")
 
 
 def _parse_json(raw: str) -> dict:
@@ -92,26 +99,41 @@ def prime_text(messages: list, temperature: float = 0.3, max_tokens: int = 2048)
     return _chat(CONFIG["reasoning_prime"], messages, temperature=temperature, max_tokens=max_tokens)
 
 
+def _chat_json(model: str, messages: list, max_tokens: int) -> dict:
+    """
+    JSON chat call with a strict-retry: if the first response yields no
+    parseable JSON object (e.g. a reasoning model spent its whole token
+    budget thinking), retry once demanding bare JSON before failing closed.
+    """
+    raw = _chat(model, messages, json_mode=True, temperature=0.1, max_tokens=max_tokens)
+    try:
+        return _parse_json(raw)
+    except ValueError:
+        strict = messages + [{
+            "role": "user",
+            "content": "Respond with ONLY the JSON object. No thinking, no explanation, no markdown.",
+        }]
+        raw = _chat(model, strict, json_mode=True, temperature=0.0, max_tokens=max_tokens)
+        return _parse_json(raw)
+
+
 def prime_json(messages: list) -> dict:
     """Prime model for structured JSON output (MAARS probe)."""
-    raw = _chat(CONFIG["reasoning_prime"], messages, json_mode=True, temperature=0.1, max_tokens=1024)
-    return _parse_json(raw)
+    return _chat_json(CONFIG["reasoning_prime"], messages, max_tokens=4096)
 
 
 # ── Reasoning Core: drift scoring ──
 
 def core_json(messages: list) -> dict:
     """Core model for structured JSON output (drift scoring)."""
-    raw = _chat(CONFIG["reasoning_core"], messages, json_mode=True, temperature=0.1, max_tokens=512)
-    return _parse_json(raw)
+    return _chat_json(CONFIG["reasoning_core"], messages, max_tokens=2048)
 
 
 # ── Reasoning Flash: citation completeness, lightweight checks ──
 
 def flash_json(messages: list) -> dict:
     """Flash model for structured JSON output (citation checking)."""
-    raw = _chat(CONFIG["reasoning_flash"], messages, json_mode=True, temperature=0.1, max_tokens=512)
-    return _parse_json(raw)
+    return _chat_json(CONFIG["reasoning_flash"], messages, max_tokens=2048)
 
 
 # ── Secondary model: explicitly non-core tasks only (optional UI polish) ──
