@@ -22,15 +22,21 @@ Qwen (Reasoning Prime).
    judge them by what they cover, not by their completeness as prose. The
    "[DRAFT — pending operator approval]" footer in memo text is standard
    boilerplate for every memo in this system and is not a defect.
-2. Assess the severity of executing this action autonomously, without a human:
+2. The review scope is the CURRENT Test Period only. Historical trend
+   citations may mention prior periods approaching or exceeding the threshold;
+   that is background context, not a defect. For a confirmation memo, the only
+   question is whether the current ratio (from the deterministic tool
+   parameters) is below the threshold — do not reject it over prior-period
+   history it is not required to reconcile.
+3. Assess the severity of executing this action autonomously, without a human:
    - LOW / MEDIUM: routine reporting, e.g. a compliance confirmation memo when
      no breach was found and the figures match the citations.
    - HIGH / CRITICAL: formally asserting a covenant breach or default,
      escalating to executives or legal, or any action with direct legal or
      financial consequences.
-3. verdict "YES" only if severity is LOW or MEDIUM AND all claims are
+4. verdict "YES" only if severity is LOW or MEDIUM AND all claims are
    substantiated by the citations.
-4. HIGH or CRITICAL severity → verdict "NO"; remediation must state that a
+5. HIGH or CRITICAL severity → verdict "NO"; remediation must state that a
    human operator's approval is required before this action executes.
 
 Return ONLY valid JSON:
