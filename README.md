@@ -13,7 +13,45 @@
    - **Drift Scorer**: Ensures the action aligns with the original task brief.
    - **MAARS Probe**: Checks for adversarial or malicious payload insertions.
    - **Citation Completeness**: Verifies that the memo cites all required financial evidence.
-7. **Action Frozen & Incident Sealing**: If any signal fails its strict threshold, the system **fails closed**, freezing the action, alerting a human operator, and sealing the incident with a tamper-evident SHA-256 hash.
+7. **Fail-Closed Outcome**: If **all three** signals pass, the action executes immediately. If **any** signal fails its strict threshold, the system **fails closed**: the action is frozen and a human operator must approve or abort it. Once the operator decides, the incident record is sealed with a tamper-evident SHA-256 hash.
+
+### Agent Loop
+
+```mermaid
+flowchart TD
+    T[Escalation trigger] --> P["1 · Plan investigation<br/>(Qwen3.6-27B)"]
+    P --> R1["2 · Retrieval pass 1<br/>covenant definition"]
+    R1 --> R2["3 · Retrieval pass 2<br/>historical ratio trend"]
+    R2 --> C["4 · Tool call: calculate_ratio<br/>(deterministic math)"]
+    C --> B{"Debt/EBITDA > 4.5x?"}
+    B -- "yes (breach)" --> R3["5 · Conditional retrieval pass 3<br/>transaction root cause"]
+    B -- "no (compliant)" --> D
+    R3 --> D["6 · Draft memo<br/>with citations"]
+    D --> A["7 · Propose irreversible action<br/>send memo"]
+    A --> G[[3-Signal Oversight Gate]]
+```
+
+### 3-Signal Oversight Gate (fail-closed)
+
+```mermaid
+flowchart TD
+    A["Proposed irreversible action<br/>(task brief · action · citations)"] --> S1 & S2 & S3
+    subgraph Parallel signals
+        S1["Drift Scorer<br/>score < 0.40"]
+        S2["MAARS Probe<br/>verdict YES, confidence ≥ 70"]
+        S3["Citation Completeness<br/>score ≥ 0.60"]
+    end
+    S1 --> V{All three pass?}
+    S2 --> V
+    S3 --> V
+    V -- yes --> E["✓ Action executes"]
+    V -- "no (fail-closed)" --> F["■ Action FROZEN"]
+    F --> O{Human operator}
+    O -- approve --> X["Memo sent"]
+    O -- abort --> Z["Action aborted"]
+    X --> H["Incident sealed<br/>SHA-256 integrity hash"]
+    Z --> H
+```
 
 ## Demo Scenarios
 
@@ -35,6 +73,16 @@ However, during development, we identified a hard API restriction: **Vultr's Ser
 To maintain 100% architectural integrity without faking model IDs (a common pitfall we deliberately avoided), we implemented a highly engineered **dual-stage pipeline** that explicitly isolates Retrieval and Reasoning:
 
 1. **Document Retrieval (VultronRetriever)**: We discovered that while VultronRetriever is blocked from chat, Vultr hosts an **undocumented `/v1/rerank` endpoint** that accepts these models perfectly. Our Vector Store `search()` function over-fetches candidate chunks via standard vector similarity, and then explicitly passes them through `https://api.vultrinference.com/v1/rerank` using `vultr/VultronRetrieverCore-Qwen3.5-4.5B` (configurable via `VULTRON_RERANK_MODEL`; Prime-8B and Flash-0.8B also work). The chunks are re-sorted by `relevance_score`, guaranteeing that VultronRetriever strictly powers our core retrieval logic, completely satisfying the spirit of the rubric.
+
+```mermaid
+flowchart LR
+    Q[Agent query] --> VS["Vultr Vector Store<br/>over-fetch top-k candidates"]
+    VS --> RR["/v1/rerank<br/>VultronRetrieverCore-Qwen3.5-4.5B"]
+    RR --> TOP["Top chunks by relevance_score"]
+    TOP --> LLM["/v1/chat/completions<br/>Qwen/Qwen3.6-27B (reasoning)"]
+    LLM --> OUT["Grounded step output + citations"]
+```
+
 2. **Core Reasoning (Qwen3.6-27B)**: Because the Vultr API mathematically prevents VultronRetriever from executing the required reasoning (planning, MAARS probing, drift scoring), we dynamically fallback to `Qwen/Qwen3.6-27B`. We selected Qwen because it is the exact same foundational model family that powers VultronRetriever (Qwen3.5). This ensures our reasoning engine remains as close to the intended Vultron architecture as technically possible on the Vultr platform. All UI events explicitly attribute reasoning to the Qwen model.
 
 ## Rubric Compliance
@@ -67,6 +115,17 @@ curl -X POST https://api.vultrinference.com/v1/chat/completions \
 The application is deployed on a Vultr Ubuntu VM.
 - **Backend**: FastAPI running via Uvicorn, managed by `systemd`.
 - **Frontend**: React SPA served by `nginx`, with `/ws` reverse-proxied to the backend.
+
+```mermaid
+flowchart LR
+    U[Browser] -->|HTTP| N[nginx]
+    U <-->|WebSocket /ws| N
+    N -->|static| SPA["React SPA<br/>frontend/dist"]
+    N -->|proxy /api·/ws| F["FastAPI + Uvicorn<br/>(systemd)"]
+    F <--> EB["EventBus → WS broadcast<br/>(with replay buffer)"]
+    F --> INC["incidents/*.json<br/>SHA-256 sealed"]
+    F -->|HTTPS| V["Vultr Serverless Inference<br/>vector store · rerank · chat"]
+```
 
 ### Setup Instructions
 See `deploy/DEPLOYMENT.md` for full automated installation instructions on a fresh Vultr VM.
