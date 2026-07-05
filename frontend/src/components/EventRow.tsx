@@ -11,6 +11,7 @@ import type {
   ActionExecutedPayload,
   OperatorDecisionPayload,
   ErrorPayload,
+  RunStartedPayload,
 } from "../types";
 import { ModelBadge } from "./ModelBadge";
 import { RetrievalBadge } from "./RetrievalBadge";
@@ -34,6 +35,49 @@ const EVENT_COLORS: Record<string, string> = {
   OPERATOR_DECISION: "#64B5F6",
   ERROR: "#E53935",
 };
+
+function RunDivider({ event }: EventRowProps) {
+  const payload = event.payload as RunStartedPayload;
+  const isBreach = payload.scenario === "breach";
+  const accent = isBreach ? "var(--color-frozen)" : "var(--color-executed)";
+  const lineStyle: CSSProperties = {
+    flex: 1,
+    height: "1px",
+    background: "var(--color-border)",
+  };
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "14px 4px 6px",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      <div style={lineStyle} />
+      <span
+        style={{
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: accent,
+          border: `1px solid ${accent}66`,
+          borderRadius: "var(--radius-sm)",
+          padding: "3px 10px",
+          whiteSpace: "nowrap",
+        }}
+      >
+        ▶ Run · {payload.label} · {payload.scenario}
+      </span>
+      <span style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+        {new Date(event.timestamp * 1000).toLocaleTimeString()}
+      </span>
+      <div style={lineStyle} />
+    </div>
+  );
+}
 
 export function EventRow({ event }: EventRowProps) {
   const color = EVENT_COLORS[event.event_type] ?? "var(--color-text)";
@@ -91,6 +135,10 @@ export function EventRow({ event }: EventRowProps) {
     gap: "8px",
     flexWrap: "wrap",
   };
+
+  if (event.event_type === "RUN_STARTED") {
+    return <RunDivider event={event} />;
+  }
 
   const renderContent = () => {
     switch (event.event_type) {

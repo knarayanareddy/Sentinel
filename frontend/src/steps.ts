@@ -51,12 +51,17 @@ export function stepForEvent(event: SentinelEvent): number | null {
 
 export type StepState = "pending" | "active" | "done" | "frozen" | "aborted";
 
-/** Compute the state of each of the 7 steps from the event stream. */
+/** Compute the state of each of the 7 steps from the latest run in the event stream. */
 export function stepStates(events: SentinelEvent[]): StepState[] {
+  const runStarts = events.filter((e) => e.event_type === "RUN_STARTED");
+  const latestRunTs =
+    runStarts.length > 0 ? Math.max(...runStarts.map((e) => e.timestamp)) : null;
+  const runEvents =
+    latestRunTs === null ? events : events.filter((e) => e.timestamp >= latestRunTs);
   const reached = new Set<number>();
   let frozen = false;
   let decision: string | null = null;
-  for (const e of events) {
+  for (const e of runEvents) {
     const s = stepForEvent(e);
     if (s !== null) reached.add(s);
     if (e.event_type === "ACTION_FROZEN") frozen = true;

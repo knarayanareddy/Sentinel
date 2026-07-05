@@ -33,6 +33,9 @@ export function useEventStream() {
           );
 
           // Track frozen actions
+          if (event.event_type === "RUN_STARTED") {
+            setFrozenAction(null);
+          }
           if (event.event_type === "ACTION_FROZEN") {
             setFrozenAction(event);
           }

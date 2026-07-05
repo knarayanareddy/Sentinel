@@ -84,6 +84,12 @@ def _agent_loop(scenario: str = "breach"):
     """
     financials = SCENARIOS.get(scenario, SCENARIOS["breach"])
     print(f"[AGENT] Scenario: {financials['label']}")
+
+    emit(SentinelEvent(
+        event_type=EventType.RUN_STARTED,
+        payload={"scenario": scenario, "label": financials["label"]},
+    ))
+
     print("[AGENT] Step 1: Planning investigation...")
 
     # ── Step 1: PLAN ──
